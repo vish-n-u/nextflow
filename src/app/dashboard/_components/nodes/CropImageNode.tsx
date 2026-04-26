@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Handle, Position, useReactFlow, useHandleConnections,
+  Handle, Position, useReactFlow, useNodeConnections,
   type NodeProps, type Node,
 } from "@xyflow/react";
 import { Scissors } from "lucide-react";
@@ -33,7 +33,7 @@ interface CropFieldProps {
 }
 
 function CropField({ handleId, label, value, onChange }: CropFieldProps) {
-  const conns = useHandleConnections({ type: "target", id: handleId });
+  const conns = useNodeConnections({ handleType: "target", handleId });
   return (
     <div className="relative">
       <Handle type="target" position={Position.Left} id={handleId} className={TGT} />
@@ -50,7 +50,7 @@ function CropField({ handleId, label, value, onChange }: CropFieldProps) {
 
 export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeType>) {
   const { updateNodeData } = useReactFlow();
-  const imageConns = useHandleConnections({ type: "target", id: "image_url" });
+  const imageConns = useNodeConnections({ handleType: "target", handleId: "image_url" });
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);

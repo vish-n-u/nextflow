@@ -1,61 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Type,
-  Image,
-  Video,
-  Sparkles,
-  Scissors,
-  Film,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { NODE_REGISTRY, type NodeMeta, type NodeCategory as NodeCategoryType } from "@/lib/nodeRegistry";
 
-interface NodeItem {
-  type: string;
-  label: string;
-  Icon: LucideIcon;
-  description: string;
-}
+const CATEGORY_ORDER: NodeCategoryType[] = ["Input", "AI", "Transform"];
 
-interface NodeCategory {
-  label: string;
-  nodes: NodeItem[];
-}
+const NODE_CATEGORIES = CATEGORY_ORDER.map((cat) => ({
+  label: cat,
+  nodes: NODE_REGISTRY.filter((n) => n.category === cat),
+}));
 
-const NODE_CATEGORIES: NodeCategory[] = [
-  {
-    label: "Input",
-    nodes: [
-      { type: "textNode",        label: "Text",         Icon: Type,     description: "Static text value"    },
-      { type: "uploadImageNode", label: "Upload Image", Icon: Image,    description: "Upload an image file" },
-      { type: "uploadVideoNode", label: "Upload Video", Icon: Video,    description: "Upload a video file"  },
-    ],
-  },
-  {
-    label: "AI",
-    nodes: [
-      { type: "runLLMNode", label: "Run LLM", Icon: Sparkles, description: "Gemini language model" },
-    ],
-  },
-  {
-    label: "Transform",
-    nodes: [
-      { type: "cropImageNode",    label: "Crop Image",    Icon: Scissors, description: "Crop an image region"  },
-      { type: "extractFrameNode", label: "Extract Frame", Icon: Film,     description: "Pull frame from video" },
-    ],
-  },
-];
 
 interface NodeCardProps {
-  node: NodeItem;
+  node: NodeMeta;
   onNodeAdd: (type: string) => void;
 }
 
 function NodeCard({ node, onNodeAdd }: NodeCardProps) {
-  const { Icon, label, description, type } = node;
+  const { icon: Icon, label, description, type } = node;
 
   const handleDragStart = (event: React.DragEvent) => {
     event.dataTransfer.setData("application/reactflow", type);
@@ -81,7 +44,7 @@ function NodeCard({ node, onNodeAdd }: NodeCardProps) {
 }
 
 interface CategoryProps {
-  category: NodeCategory;
+  category: { label: string; nodes: NodeMeta[] };
   onNodeAdd: (type: string) => void;
 }
 

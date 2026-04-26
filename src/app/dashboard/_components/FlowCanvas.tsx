@@ -18,32 +18,13 @@ import {
   type Connection,
 } from "@xyflow/react";
 
-import { TextNode }         from "./nodes/TextNode";
-import { UploadImageNode }  from "./nodes/UploadImageNode";
-import { UploadVideoNode }  from "./nodes/UploadVideoNode";
-import { RunLLMNode }       from "./nodes/RunLLMNode";
-import { CropImageNode }    from "./nodes/CropImageNode";
-import { ExtractFrameNode } from "./nodes/ExtractFrameNode";
+import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
+import { getNodeMeta } from "@/lib/nodeRegistry";
 
-const nodeTypes = {
-  textNode:         TextNode,
-  uploadImageNode:  UploadImageNode,
-  uploadVideoNode:  UploadVideoNode,
-  runLLMNode:       RunLLMNode,
-  cropImageNode:    CropImageNode,
-  extractFrameNode: ExtractFrameNode,
-} as const;
+const nodeTypes = COMPONENT_REGISTRY;
 
 function getDefaultData(type: string): Record<string, unknown> {
-  switch (type) {
-    case "textNode":         return { text: "" };
-    case "uploadImageNode":  return {};
-    case "uploadVideoNode":  return {};
-    case "runLLMNode":       return { model: "Gemini 2.5 Flash", system_prompt: "", user_message: "" };
-    case "cropImageNode":    return { x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
-    case "extractFrameNode": return { timestamp: "" };
-    default:                 return {};
-  }
+  return getNodeMeta(type)?.defaultData ?? {};
 }
 
 // ─── History ──────────────────────────────────────────────────────────────────

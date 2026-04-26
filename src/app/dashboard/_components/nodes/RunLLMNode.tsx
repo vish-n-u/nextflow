@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Handle, Position, useReactFlow, useHandleConnections,
+  Handle, Position, useReactFlow, useNodeConnections,
   type NodeProps, type Node,
 } from "@xyflow/react";
 import { Sparkles } from "lucide-react";
@@ -28,9 +28,9 @@ const connectedCls = "text-[10px] text-zinc-600 italic px-2 py-2 bg-zinc-800/40 
 
 export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
   const { updateNodeData } = useReactFlow();
-  const syspromptConns = useHandleConnections({ type: "target", id: "system_prompt" });
-  const usermsgConns   = useHandleConnections({ type: "target", id: "user_message" });
-  const imagesConns    = useHandleConnections({ type: "target", id: "images" });
+  const syspromptConns = useNodeConnections({ handleType: "target", handleId: "system_prompt" });
+  const usermsgConns   = useNodeConnections({ handleType: "target", handleId: "user_message" });
+  const imagesConns    = useNodeConnections({ handleType: "target", handleId: "images" });
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);

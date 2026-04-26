@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Handle, Position, useReactFlow, useHandleConnections,
+  Handle, Position, useReactFlow, useNodeConnections,
   type NodeProps, type Node,
 } from "@xyflow/react";
 import { Film } from "lucide-react";
@@ -24,8 +24,8 @@ const inputCls    = "w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 p
 
 export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameNodeType>) {
   const { updateNodeData } = useReactFlow();
-  const videoConns     = useHandleConnections({ type: "target", id: "video_url" });
-  const timestampConns = useHandleConnections({ type: "target", id: "timestamp" });
+  const videoConns     = useNodeConnections({ handleType: "target", handleId: "video_url" });
+  const timestampConns = useNodeConnections({ handleType: "target", handleId: "timestamp" });
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);
