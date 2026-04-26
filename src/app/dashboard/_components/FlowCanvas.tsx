@@ -175,6 +175,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     if (!workflowRun) return;
     const { runId, publicToken } = workflowRun;
     let mounted = true;
+    const applied: Record<string, string> = {};
 
     void auth.withAuth({ accessToken: publicToken }, async () => {
       for await (const run of runs.subscribeToRun(runId)) {
@@ -182,6 +183,8 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         const nodeStatuses = run.metadata?.nodeStatuses as Record<string, string> | undefined;
         if (nodeStatuses) {
           for (const [nodeId, status] of Object.entries(nodeStatuses)) {
+            if (applied[nodeId] === status) continue;
+            applied[nodeId] = status;
             updateNodeData(nodeId, { status });
           }
         }
