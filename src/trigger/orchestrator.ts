@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk";
+import { task, metadata } from "@trigger.dev/sdk";
 import { TASK_REGISTRY } from "./taskRegistry";
 
 interface FlowNode {
@@ -15,18 +15,16 @@ interface FlowEdge {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-type WorkflowStatus = "running" | "success" | "error";
+type NodeStatus = "running" | "success" | "error";
 
-async function emitStatus(serverUrl: string, nodeId: string, status: WorkflowStatus): Promise<void> {
-  try {
-    await fetch(`${serverUrl}/emit-status`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ nodeId, status }),
-    });
-  } catch {
-    // Non-fatal — socket emit failure shouldn't stop the workflow
-  }
+async function setNodeStatus(
+  nodeStatuses: Record<string, NodeStatus>,
+  nodeId: string,
+  status: NodeStatus,
+): Promise<void> {
+  nodeStatuses[nodeId] = status;
+  metadata.set("nodeStatuses", nodeStatuses as Record<string, string>);
+  await metadata.flush();
 }
 
 /** Kahn's algorithm — returns nodes in execution order */
@@ -65,13 +63,14 @@ function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
 export const orchestratorTask = task({
   id: "orchestrator",
   maxDuration: 600,
-  run: async (payload: { nodes: FlowNode[]; edges: FlowEdge[]; serverUrl: string }) => {
-    const { nodes, edges, serverUrl } = payload;
-    const sorted = topoSort(nodes, edges);
-    const nodeOutputs: Record<string, unknown> = {};
+  run: async (payload: { nodes: FlowNode[]; edges: FlowEdge[] }) => {
+    const { nodes, edges } = payload;
+    const sorted      = topoSort(nodes, edges);
+    const nodeOutputs: Record<string, unknown>    = {};
+    const nodeStatuses: Record<string, NodeStatus> = {};
 
     for (const node of sorted) {
-      await emitStatus(serverUrl, node.id, "running");
+      await setNodeStatus(nodeStatuses, node.id, "running");
 
       try {
         // Collect upstream outputs into inputs map
@@ -93,9 +92,9 @@ export const orchestratorTask = task({
 
         const entry = TASK_REGISTRY.find((e) => e.type === node.type);
         if (!entry) {
-          // Unknown node type — skip gracefully without failing the workflow
+          // Unknown node type — skip gracefully
           nodeOutputs[node.id] = null;
-          await emitStatus(serverUrl, node.id, "success");
+          await setNodeStatus(nodeStatuses, node.id, "success");
           continue;
         }
 
@@ -104,9 +103,9 @@ export const orchestratorTask = task({
         if (!r.ok) throw new Error(String(r.error));
 
         nodeOutputs[node.id] = r.output[entry.outputKey];
-        await emitStatus(serverUrl, node.id, "success");
+        await setNodeStatus(nodeStatuses, node.id, "success");
       } catch (err) {
-        await emitStatus(serverUrl, node.id, "error");
+        await setNodeStatus(nodeStatuses, node.id, "error");
         throw err;
       }
     }

@@ -18,6 +18,7 @@ import {
   type Connection,
 } from "@xyflow/react";
 
+import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
 import { isValidHandleConnection } from "@/lib/nodeContracts";
@@ -39,12 +40,13 @@ interface FlowCanvasInnerProps {
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
+  workflowRun: { runId: string; publicToken: string } | null;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, workflowRun }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const { screenToFlowPosition, getNode } = useReactFlow();
+  const { screenToFlowPosition, getNode, updateNodeData } = useReactFlow();
 
   // Keep refs to latest state for the workflow-run fn and history saves
   const nodesRef = useRef(nodes);
@@ -156,7 +158,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         nodeType: "orchestrator",
         data: {
           nodes: nodesRef.current.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
-          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? "" })),
+          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? ""  })),
         },
       }),
     });
@@ -167,6 +169,28 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   useEffect(() => {
     onRegisterRunWorkflow(runWorkflow);
   }, [runWorkflow, onRegisterRunWorkflow]);
+
+  // ── Workflow node-status glows ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!workflowRun) return;
+    const { runId, publicToken } = workflowRun;
+    let mounted = true;
+
+    void auth.withAuth({ accessToken: publicToken }, async () => {
+      for await (const run of runs.subscribeToRun(runId)) {
+        if (!mounted) break;
+        const nodeStatuses = run.metadata?.nodeStatuses as Record<string, string> | undefined;
+        if (nodeStatuses) {
+          for (const [nodeId, status] of Object.entries(nodeStatuses)) {
+            updateNodeData(nodeId, { status });
+          }
+        }
+        if (run.isCompleted || run.isFailed) break;
+      }
+    });
+
+    return () => { mounted = false; };
+  }, [workflowRun, updateNodeData]);
 
   // ── Drag-and-drop from sidebar ───────────────────────────────────────────────
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -233,6 +257,7 @@ interface FlowCanvasProps {
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
+  workflowRun: { runId: string; publicToken: string } | null;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {

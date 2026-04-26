@@ -89,7 +89,7 @@ export const NODE_REGISTRY: NodeMeta[] = [
     icon:        Film,
     defaultData: { timestamp: "" },
     outputs:     { output: "image" },
-    inputs:      { video_url: "video" },
+    inputs:      { video_url: "video", timestamp: "text" },
   },
 ];
 

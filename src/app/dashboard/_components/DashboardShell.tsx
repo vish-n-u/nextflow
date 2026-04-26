@@ -91,6 +91,7 @@ export function DashboardShell() {
           onNodeAdded={handleNodeAdded}
           onNodeSelect={setSelectedNode}
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
+          workflowRun={workflowRun}
         />
         <RightBar
           selectedNode={selectedNode}

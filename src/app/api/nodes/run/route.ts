@@ -11,9 +11,8 @@ async function triggerForNodeType(nodeType: string, data: NodeData) {
   // Orchestrator has a distinct call shape (nodes + edges) — keep it separate
   if (nodeType === "orchestrator") {
     return orchestratorTask.trigger({
-      nodes:     data.nodes as Array<{ id: string; type: string; data: NodeData }>,
-      edges:     data.edges as Array<{ source: string; target: string; targetHandle: string }>,
-      serverUrl: "",
+      nodes: data.nodes as Array<{ id: string; type: string; data: NodeData }>,
+      edges: data.edges as Array<{ source: string; target: string; targetHandle: string }>,
     });
   }
 
