@@ -16,6 +16,7 @@ import {
   type Node,
   type Edge,
   type Connection,
+  type IsValidConnection,
 } from "@xyflow/react";
 
 import { runs, auth } from "@trigger.dev/sdk/v3";
@@ -127,8 +128,8 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   }, [nodeToAdd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Connection validation ────────────────────────────────────────────────────
-  const isValidConnection = useCallback(
-    (connection: Connection) => {
+  const isValidConnection = useCallback<IsValidConnection>(
+    (connection) => {
       const src = getNode(connection.source);
       const tgt = getNode(connection.target);
       if (!src || !tgt) return false;
