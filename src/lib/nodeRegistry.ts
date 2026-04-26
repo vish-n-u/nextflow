@@ -79,7 +79,7 @@ export const NODE_REGISTRY: NodeMeta[] = [
     icon:        Scissors,
     defaultData: { x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 },
     outputs:     { output: "image" },
-    inputs:      { image: "image" },
+    inputs:      { image_url: "image" },
   },
   {
     type:        "extractFrameNode",
@@ -89,7 +89,7 @@ export const NODE_REGISTRY: NodeMeta[] = [
     icon:        Film,
     defaultData: { timestamp: "" },
     outputs:     { output: "image" },
-    inputs:      { video: "video" },
+    inputs:      { video_url: "video" },
   },
 ];
 

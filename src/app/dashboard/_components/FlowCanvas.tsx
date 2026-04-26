@@ -20,6 +20,7 @@ import {
 
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
+import { isValidHandleConnection } from "@/lib/nodeContracts";
 
 const nodeTypes = COMPONENT_REGISTRY;
 
@@ -43,7 +44,7 @@ interface FlowCanvasInnerProps {
 function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getNode } = useReactFlow();
 
   // Keep refs to latest state for the workflow-run fn and history saves
   const nodesRef = useRef(nodes);
@@ -123,6 +124,22 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     onNodeAdded();
   }, [nodeToAdd]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Connection validation ────────────────────────────────────────────────────
+  const isValidConnection = useCallback(
+    (connection: Connection) => {
+      const src = getNode(connection.source);
+      const tgt = getNode(connection.target);
+      if (!src || !tgt) return false;
+      return isValidHandleConnection(
+        src.type ?? "",
+        connection.sourceHandle ?? "output",
+        tgt.type ?? "",
+        connection.targetHandle ?? "",
+      );
+    },
+    [getNode],
+  );
+
   // ── Edge connect ─────────────────────────────────────────────────────────────
   const onConnect = useCallback(
     (params: Connection) =>
@@ -176,6 +193,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onNodeSelect(node)}
         onPaneClick={() => onNodeSelect(null)}
         nodeTypes={nodeTypes}
