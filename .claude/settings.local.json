@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install @xyflow/react zustand zod @google/generative-ai lucide-react socket.io socket.io-client)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install @clerk/nextjs@latest)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install prisma @prisma/client && npx prisma init --datasource-provider postgresql 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install --save-dev dotenv)"
+    ]
+  }
+}

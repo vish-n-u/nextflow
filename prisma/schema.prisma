@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id        String   @id // Clerk userId
+  email     String?
+  createdAt DateTime @default(now())
+
+  workflows Workflow[]
+  runs      Run[]
+}
+
+///////////////////////////
+// WORKFLOW
+///////////////////////////
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  // React Flow JSON
+  nodes     Json
+  edges     Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs      Run[]
+}
+
+///////////////////////////
+// WORKFLOW RUN
+///////////////////////////
+model Run {
+  id          String   @id @default(cuid())
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id])
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  status      RunStatus
+  scope       RunScope
+
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+
+  nodeRuns    NodeRun[]
+}
+
+///////////////////////////
+// NODE EXECUTION
+///////////////////////////
+model NodeRun {
+  id        String   @id @default(cuid())
+
+  runId     String
+  run       Run      @relation(fields: [runId], references: [id])
+
+  nodeId    String   // React Flow node id
+  nodeType  String   // "llm", "crop-image", etc.
+
+  status    NodeStatus
+
+  input     Json?
+  output    Json?
+  error     String?
+
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  durationMs Int?
+}
+
+///////////////////////////
+// ENUMS
+///////////////////////////
+enum RunStatus {
+  running
+  success
+  failed
+  partial
+}
+
+enum RunScope {
+  full
+  partial
+  single
+}
+
+enum NodeStatus {
+  pending
+  running
+  success
+  failed
+}
