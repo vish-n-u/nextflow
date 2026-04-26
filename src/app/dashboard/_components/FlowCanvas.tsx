@@ -8,6 +8,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  MiniMap,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -17,35 +18,39 @@ import {
   type Connection,
 } from "@xyflow/react";
 
-import { TextNode }        from "./nodes/TextNode";
-import { UploadImageNode } from "./nodes/UploadImageNode";
-import { UploadVideoNode } from "./nodes/UploadVideoNode";
-import { RunLLMNode }      from "./nodes/RunLLMNode";
-import { CropImageNode }   from "./nodes/CropImageNode";
+import { TextNode }         from "./nodes/TextNode";
+import { UploadImageNode }  from "./nodes/UploadImageNode";
+import { UploadVideoNode }  from "./nodes/UploadVideoNode";
+import { RunLLMNode }       from "./nodes/RunLLMNode";
+import { CropImageNode }    from "./nodes/CropImageNode";
 import { ExtractFrameNode } from "./nodes/ExtractFrameNode";
 
 const nodeTypes = {
-  textNode:        TextNode,
-  uploadImageNode: UploadImageNode,
-  uploadVideoNode: UploadVideoNode,
-  runLLMNode:      RunLLMNode,
-  cropImageNode:   CropImageNode,
+  textNode:         TextNode,
+  uploadImageNode:  UploadImageNode,
+  uploadVideoNode:  UploadVideoNode,
+  runLLMNode:       RunLLMNode,
+  cropImageNode:    CropImageNode,
   extractFrameNode: ExtractFrameNode,
 } as const;
 
 function getDefaultData(type: string): Record<string, unknown> {
   switch (type) {
-    case "textNode":        return { text: "" };
-    case "uploadImageNode": return {};
-    case "uploadVideoNode": return {};
-    case "runLLMNode":      return { model: "Gemini 2.5 Flash", system_prompt: "", user_message: "" };
-    case "cropImageNode":   return { x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
+    case "textNode":         return { text: "" };
+    case "uploadImageNode":  return {};
+    case "uploadVideoNode":  return {};
+    case "runLLMNode":       return { model: "Gemini 2.5 Flash", system_prompt: "", user_message: "" };
+    case "cropImageNode":    return { x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
     case "extractFrameNode": return { timestamp: "" };
-    default:                return {};
+    default:                 return {};
   }
 }
 
-// ─── Inner component (lives inside ReactFlowProvider, hooks work here) ────────
+// ─── History ──────────────────────────────────────────────────────────────────
+
+type Snapshot = { nodes: Node[]; edges: Edge[] };
+
+// ─── Inner component (lives inside ReactFlowProvider) ────────────────────────
 
 interface FlowCanvasInnerProps {
   nodeToAdd: { type: string; ts: number } | null;
@@ -59,18 +64,65 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();
 
-  console.log("FlowCanvasInner rendered", { nodes, edges, nodeToAdd });
-
-  // Keep refs to latest nodes/edges so the registered fn is always fresh
+  // Keep refs to latest state for the workflow-run fn and history saves
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
 
+  // ── Undo / redo ─────────────────────────────────────────────────────────────
+  const history    = useRef<Snapshot[]>([{ nodes: [], edges: [] }]);
+  const historyIdx = useRef(0);
+  const isRestoring = useRef(false);
+
+  // Debounced auto-save: fires after every nodes/edges change except during restore
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isRestoring.current) {
+      isRestoring.current = false;
+      return;
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      history.current = history.current.slice(0, historyIdx.current + 1);
+      history.current.push({ nodes, edges });
+      historyIdx.current = history.current.length - 1;
+    }, 300);
+  }, [nodes, edges]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const undo = useCallback(() => {
+    if (historyIdx.current <= 0) return;
+    historyIdx.current--;
+    const snap = history.current[historyIdx.current];
+    isRestoring.current = true;
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+  }, [setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (historyIdx.current >= history.current.length - 1) return;
+    historyIdx.current++;
+    const snap = history.current[historyIdx.current];
+    isRestoring.current = true;
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (e.key === "y" || (e.key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undo, redo]);
+
+  // ── Node add ─────────────────────────────────────────────────────────────────
   const addNode = useCallback(
     (type: string, position: { x: number; y: number }) => {
       const newNode: Node = {
-        id: `${type}-${Date.now()}`,
+        id:   `${type}-${Date.now()}`,
         type,
         position,
         data: getDefaultData(type),
@@ -80,27 +132,27 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     [setNodes],
   );
 
-  // Click-to-add: place at viewport centre
   useEffect(() => {
     if (!nodeToAdd) return;
     const position = screenToFlowPosition({
-      x: window.innerWidth / 2,
+      x: window.innerWidth  / 2,
       y: window.innerHeight / 2,
     });
     addNode(nodeToAdd.type, position);
     onNodeAdded();
   }, [nodeToAdd]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Edge connect ─────────────────────────────────────────────────────────────
   const onConnect = useCallback(
     (params: Connection) =>
       setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
     [setEdges],
   );
 
-  // Register the workflow-run fn with the parent whenever it might have changed
+  // ── Workflow run ─────────────────────────────────────────────────────────────
   const runWorkflow = useCallback(async (): Promise<{ runId: string; publicToken: string }> => {
     const res = await fetch("/api/nodes/run", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nodeType: "orchestrator",
@@ -112,12 +164,13 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     });
     if (!res.ok) throw new Error("Failed to start workflow");
     return res.json() as Promise<{ runId: string; publicToken: string }>;
-  }, []); // refs are stable — no deps needed
+  }, []);
 
   useEffect(() => {
     onRegisterRunWorkflow(runWorkflow);
   }, [runWorkflow, onRegisterRunWorkflow]);
 
+  // ── Drag-and-drop from sidebar ───────────────────────────────────────────────
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
@@ -135,11 +188,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   );
 
   return (
-    <div
-      className="flex-1 h-full bg-[#0a0a0a]"
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-    >
+    <div className="flex-1 h-full bg-[#0a0a0a]" onDrop={onDrop} onDragOver={onDragOver}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -164,6 +213,15 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
           style={{ backgroundColor: "#0a0a0a" }}
         />
         <Controls className="!border-zinc-800 !bg-zinc-900 [&>button]:!border-zinc-800 [&>button]:!bg-zinc-900 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-800 [&>button:hover]:!text-zinc-100" />
+        <MiniMap
+          position="bottom-right"
+          nodeColor="#3f3f46"
+          maskColor="rgba(0,0,0,0.6)"
+          style={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "0.5rem" }}
+          nodeStrokeWidth={0}
+          zoomable
+          pannable
+        />
       </ReactFlow>
     </div>
   );

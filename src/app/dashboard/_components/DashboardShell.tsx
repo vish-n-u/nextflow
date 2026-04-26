@@ -12,6 +12,10 @@ export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
+  // Mobile sidebar drawer state
+  const [leftBarOpen, setLeftBarOpen] = useState(false);
+  const [rightBarOpen, setRightBarOpen] = useState(false);
+
   // { type, ts } — ts changes on every click so the effect always fires
   const [nodeToAdd, setNodeToAdd] = useState<{ type: string; ts: number } | null>(null);
 
@@ -73,16 +77,26 @@ export function DashboardShell() {
         onWorkflowNameChange={setWorkflowName}
         workflowStatus={workflowStatus}
         onRunWorkflow={handleRunWorkflow}
+        onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
+        onToggleRightBar={() => setRightBarOpen((v) => !v)}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <LeftBar onNodeAdd={handleNodeAdd} />
+      <div className="flex flex-1 overflow-hidden relative">
+        <LeftBar
+          onNodeAdd={handleNodeAdd}
+          isOpen={leftBarOpen}
+          onClose={() => setLeftBarOpen(false)}
+        />
         <FlowCanvas
           nodeToAdd={nodeToAdd}
           onNodeAdded={handleNodeAdded}
           onNodeSelect={setSelectedNode}
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
         />
-        <RightBar selectedNode={selectedNode} />
+        <RightBar
+          selectedNode={selectedNode}
+          isOpen={rightBarOpen}
+          onClose={() => setRightBarOpen(false)}
+        />
       </div>
     </div>
   );

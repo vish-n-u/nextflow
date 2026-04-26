@@ -1,16 +1,18 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { Layers, Play } from "lucide-react";
+import { Layers, Play, PanelLeft, PanelRight } from "lucide-react";
 
 interface TopBarProps {
   workflowName: string;
   onWorkflowNameChange: (name: string) => void;
   workflowStatus: "idle" | "running" | "success" | "error";
   onRunWorkflow: () => void;
+  onToggleLeftBar: () => void;
+  onToggleRightBar: () => void;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, onToggleLeftBar, onToggleRightBar }: TopBarProps) {
   const btnLabel =
     workflowStatus === "running" ? "Running…" :
     workflowStatus === "success" ? "Done"      :
@@ -23,29 +25,45 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
     "bg-white text-black hover:bg-zinc-200";
 
   return (
-    <header className="h-12 shrink-0 flex items-center justify-between px-4 bg-zinc-950 border-b border-zinc-800 z-10">
-      <div className="flex items-center gap-2 w-40">
-        <Layers className="w-4 h-4 text-white" />
-        <span className="text-sm font-semibold text-white tracking-tight">NextFlow</span>
+    <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-zinc-950 border-b border-zinc-800 z-10 gap-2">
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Mobile: left bar toggle */}
+        <button
+          onClick={onToggleLeftBar}
+          className="md:hidden p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          aria-label="Toggle node panel"
+        >
+          <PanelLeft className="w-4 h-4" />
+        </button>
+        <Layers className="w-4 h-4 text-white hidden md:block" />
+        <span className="text-sm font-semibold text-white tracking-tight hidden sm:block">NextFlow</span>
       </div>
 
       <input
         value={workflowName}
         onChange={(e) => onWorkflowNameChange(e.target.value)}
-        className="bg-transparent text-sm text-zinc-300 text-center outline-none border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 w-52 transition-colors placeholder:text-zinc-600"
+        className="bg-transparent text-sm text-zinc-300 text-center outline-none border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 w-32 sm:w-52 transition-colors placeholder:text-zinc-600 min-w-0"
         placeholder="Untitled workflow"
       />
 
-      <div className="flex items-center gap-3 w-40 justify-end">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onRunWorkflow}
           disabled={workflowStatus === "running"}
           className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${btnCls}`}
         >
           <Play className="w-3 h-3 fill-current" />
-          {btnLabel}
+          <span className="hidden sm:inline">{btnLabel}</span>
         </button>
         <UserButton />
+        {/* Mobile: right bar toggle */}
+        <button
+          onClick={onToggleRightBar}
+          className="md:hidden p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          aria-label="Toggle properties panel"
+        >
+          <PanelRight className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );

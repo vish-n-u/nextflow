@@ -5,13 +5,40 @@ import type { Node } from "@xyflow/react";
 
 interface RightBarProps {
   selectedNode: Node | null;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function RightBar({ selectedNode }: RightBarProps) {
+export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps) {
   return (
-    <aside className="w-64 shrink-0 flex flex-col bg-zinc-950 border-l border-zinc-800 overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-800 shrink-0">
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/60"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-12 bottom-0 right-0 z-40 w-72
+          flex flex-col bg-zinc-950 border-l border-zinc-800 overflow-hidden
+          transform transition-transform duration-200 ease-in-out
+          md:static md:top-auto md:bottom-auto md:z-auto md:w-64
+          md:translate-x-0 md:shrink-0
+          ${isOpen ? "translate-x-0" : "translate-x-full"}
+        `}
+      >
+      <div className="px-4 py-3 border-b border-zinc-800 shrink-0 flex items-center justify-between">
         <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Properties</p>
+        <button
+          onClick={onClose}
+          className="md:hidden text-zinc-600 hover:text-zinc-400 text-lg leading-none"
+          aria-label="Close panel"
+        >
+          ×
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -71,6 +98,7 @@ export function RightBar({ selectedNode }: RightBarProps) {
           </div>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

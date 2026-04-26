@@ -114,19 +114,47 @@ function Category({ category, onNodeAdd }: CategoryProps) {
 
 interface LeftBarProps {
   onNodeAdd: (type: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function LeftBar({ onNodeAdd }: LeftBarProps) {
+export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
   return (
-    <aside className="w-56 shrink-0 flex flex-col bg-zinc-950 border-r border-zinc-800 overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-800 shrink-0">
-        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Nodes</p>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2">
-        {NODE_CATEGORIES.map((cat) => (
-          <Category key={cat.label} category={cat} onNodeAdd={onNodeAdd} />
-        ))}
-      </div>
-    </aside>
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/60"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-12 bottom-0 left-0 z-40 w-64
+          flex flex-col bg-zinc-950 border-r border-zinc-800 overflow-hidden
+          transform transition-transform duration-200 ease-in-out
+          md:static md:top-auto md:bottom-auto md:z-auto md:w-56
+          md:translate-x-0 md:shrink-0
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <div className="px-4 py-3 border-b border-zinc-800 shrink-0 flex items-center justify-between">
+          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Nodes</p>
+          <button
+            onClick={onClose}
+            className="md:hidden text-zinc-600 hover:text-zinc-400 text-lg leading-none"
+            aria-label="Close panel"
+          >
+            ×
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          {NODE_CATEGORIES.map((cat) => (
+            <Category key={cat.label} category={cat} onNodeAdd={(type) => { onNodeAdd(type); onClose?.(); }} />
+          ))}
+        </div>
+      </aside>
+    </>
   );
 }
