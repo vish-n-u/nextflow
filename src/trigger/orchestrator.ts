@@ -1,4 +1,6 @@
 import { task } from "@trigger.dev/sdk";
+import { z } from "zod";
+import { LLM_MODEL_NAMES, DEFAULT_LLM_MODEL } from "../lib/models";
 import { textTask } from "./text";
 import { uploadImageTask } from "./uploadImage";
 import { uploadVideoTask } from "./uploadVideo";
@@ -18,9 +20,49 @@ interface FlowEdge {
   targetHandle: string;
 }
 
-type NodeStatus = "running" | "success" | "error";
+// ── Per-node data schemas ────────────────────────────────────────────────────
 
-async function emitStatus(serverUrl: string, nodeId: string, status: NodeStatus): Promise<void> {
+const textSchema = z.object({
+  text: z.string().default(""),
+});
+
+const uploadImageSchema = z.object({
+  tempUrl:    z.string().optional(),
+  fileBase64: z.string().optional(),
+  fileName:   z.string().optional(),
+});
+
+const uploadVideoSchema = z.object({
+  tempUrl:    z.string().optional(),
+  fileBase64: z.string().optional(),
+  fileName:   z.string().optional(),
+});
+
+const runLLMSchema = z.object({
+  model:         z.enum(LLM_MODEL_NAMES).catch(DEFAULT_LLM_MODEL),
+  user_message:  z.string().default(""),
+  system_prompt: z.string().optional(),
+  images:        z.array(z.string()).default([]),
+});
+
+const cropImageSchema = z.object({
+  image_url:      z.string().default(""),
+  x_percent:      z.coerce.number().default(0),
+  y_percent:      z.coerce.number().default(0),
+  width_percent:  z.coerce.number().default(100),
+  height_percent: z.coerce.number().default(100),
+});
+
+const extractFrameSchema = z.object({
+  video_url: z.string().default(""),
+  timestamp: z.string().optional(),
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+type WorkflowStatus = "running" | "success" | "error";
+
+async function emitStatus(serverUrl: string, nodeId: string, status: WorkflowStatus): Promise<void> {
   try {
     await fetch(`${serverUrl}/emit-status`, {
       method: "POST",
@@ -35,7 +77,7 @@ async function emitStatus(serverUrl: string, nodeId: string, status: NodeStatus)
 /** Kahn's algorithm — returns nodes in execution order */
 function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
   const inDegree = new Map<string, number>();
-  const adj = new Map<string, string[]>();
+  const adj      = new Map<string, string[]>();
 
   for (const node of nodes) {
     inDegree.set(node.id, 0);
@@ -47,7 +89,7 @@ function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
 
-  const queue = nodes.filter((n) => inDegree.get(n.id) === 0);
+  const queue  = nodes.filter((n) => inDegree.get(n.id) === 0);
   const sorted: FlowNode[] = [];
 
   while (queue.length > 0) {
@@ -62,6 +104,8 @@ function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
 
   return sorted;
 }
+
+// ── Orchestrator task ────────────────────────────────────────────────────────
 
 export const orchestratorTask = task({
   id: "orchestrator",
@@ -102,62 +146,48 @@ export const orchestratorTask = task({
 
         switch (node.type) {
           case "textNode": {
-            const r = await textTask.triggerAndWait({ text: d.text ?? "" });
+            const p = textSchema.parse(d);
+            const r = await textTask.triggerAndWait({ text: p.text });
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.output;
             break;
           }
 
           case "uploadImageNode": {
-            const r = await uploadImageTask.triggerAndWait({
-              fileBase64: d.fileBase64,
-              fileName: d.fileName,
-            });
+            const p = uploadImageSchema.parse(d);
+            const r = await uploadImageTask.triggerAndWait(p);
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.image_url;
             break;
           }
 
           case "uploadVideoNode": {
-            const r = await uploadVideoTask.triggerAndWait({
-              fileBase64: d.fileBase64,
-              fileName: d.fileName,
-            });
+            const p = uploadVideoSchema.parse(d);
+            const r = await uploadVideoTask.triggerAndWait(p);
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.video_url;
             break;
           }
 
           case "runLLMNode": {
-            const r = await runLLMTask.triggerAndWait({
-              model: d.model ?? "Gemini 1.5 Flash",
-              user_message: d.user_message ?? "",
-              system_prompt: d.system_prompt,
-              images: d.images ?? [],
-            });
+            const p = runLLMSchema.parse(d);
+            const r = await runLLMTask.triggerAndWait(p);
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.output;
             break;
           }
 
           case "cropImageNode": {
-            const r = await cropImageTask.triggerAndWait({
-              image_url: d.image_url ?? "",
-              x_percent: Number(d.x_percent ?? 0),
-              y_percent: Number(d.y_percent ?? 0),
-              width_percent: Number(d.width_percent ?? 100),
-              height_percent: Number(d.height_percent ?? 100),
-            });
+            const p = cropImageSchema.parse(d);
+            const r = await cropImageTask.triggerAndWait(p);
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.image_url;
             break;
           }
 
           case "extractFrameNode": {
-            const r = await extractFrameTask.triggerAndWait({
-              video_url: d.video_url ?? "",
-              timestamp: d.timestamp,
-            });
+            const p = extractFrameSchema.parse(d);
+            const r = await extractFrameTask.triggerAndWait(p);
             if (!r.ok) throw new Error(String(r.error));
             output = r.output.image_url;
             break;

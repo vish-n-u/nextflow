@@ -1,7 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -38,7 +38,7 @@ function getDefaultData(type: string): Record<string, unknown> {
     case "textNode":        return { text: "" };
     case "uploadImageNode": return {};
     case "uploadVideoNode": return {};
-    case "runLLMNode":      return { model: "Gemini 1.5 Flash", system_prompt: "", user_message: "" };
+    case "runLLMNode":      return { model: "Gemini 2.5 Flash", system_prompt: "", user_message: "" };
     case "cropImageNode":   return { x_percent: 0, y_percent: 0, width_percent: 100, height_percent: 100 };
     case "extractFrameNode": return { timestamp: "" };
     default:                return {};
@@ -51,12 +51,21 @@ interface FlowCanvasInnerProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
+  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();
+
+  console.log("FlowCanvasInner rendered", { nodes, edges, nodeToAdd });
+
+  // Keep refs to latest nodes/edges so the registered fn is always fresh
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
 
   const addNode = useCallback(
     (type: string, position: { x: number; y: number }) => {
@@ -87,6 +96,27 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect }: FlowCanvasInn
       setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
     [setEdges],
   );
+
+  // Register the workflow-run fn with the parent whenever it might have changed
+  const runWorkflow = useCallback(async (): Promise<{ runId: string; publicToken: string }> => {
+    const res = await fetch("/api/nodes/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nodeType: "orchestrator",
+        data: {
+          nodes: nodesRef.current.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? "" })),
+        },
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to start workflow");
+    return res.json() as Promise<{ runId: string; publicToken: string }>;
+  }, []); // refs are stable — no deps needed
+
+  useEffect(() => {
+    onRegisterRunWorkflow(runWorkflow);
+  }, [runWorkflow, onRegisterRunWorkflow]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -145,6 +175,7 @@ interface FlowCanvasProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
+  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {

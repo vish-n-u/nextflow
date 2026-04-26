@@ -4,7 +4,8 @@
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install @xyflow/react zustand zod @google/generative-ai lucide-react socket.io socket.io-client)",
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install @clerk/nextjs@latest)",
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install prisma @prisma/client && npx prisma init --datasource-provider postgresql 2>&1)",
-      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install --save-dev dotenv)"
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install --save-dev dotenv)",
+      "Bash(find \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\\\\node_modules\\\\@trigger.dev\\\\sdk\" -name \"*.d.ts\" | xargs grep -l \"useRealtimeRun\\\\|useRealtime\" 2>/dev/null | head -10)"
     ]
   }
 }

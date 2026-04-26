@@ -6,9 +6,22 @@ import { Layers, Play } from "lucide-react";
 interface TopBarProps {
   workflowName: string;
   onWorkflowNameChange: (name: string) => void;
+  workflowStatus: "idle" | "running" | "success" | "error";
+  onRunWorkflow: () => void;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow }: TopBarProps) {
+  const btnLabel =
+    workflowStatus === "running" ? "Running…" :
+    workflowStatus === "success" ? "Done"      :
+    workflowStatus === "error"   ? "Error"     : "Run";
+
+  const btnCls =
+    workflowStatus === "success" ? "bg-green-500 text-white hover:bg-green-400" :
+    workflowStatus === "error"   ? "bg-red-500 text-white hover:bg-red-400"     :
+    workflowStatus === "running" ? "bg-zinc-300 text-black"                     :
+    "bg-white text-black hover:bg-zinc-200";
+
   return (
     <header className="h-12 shrink-0 flex items-center justify-between px-4 bg-zinc-950 border-b border-zinc-800 z-10">
       <div className="flex items-center gap-2 w-40">
@@ -24,9 +37,13 @@ export function TopBar({ workflowName, onWorkflowNameChange }: TopBarProps) {
       />
 
       <div className="flex items-center gap-3 w-40 justify-end">
-        <button className="flex items-center gap-1.5 bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-zinc-200 transition-colors">
-          <Play className="w-3 h-3 fill-black" />
-          Run
+        <button
+          onClick={onRunWorkflow}
+          disabled={workflowStatus === "running"}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${btnCls}`}
+        >
+          <Play className="w-3 h-3 fill-current" />
+          {btnLabel}
         </button>
         <UserButton />
       </div>
