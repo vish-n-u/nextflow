@@ -6,9 +6,21 @@ import { runLLMTask } from "./runLLM";
 import { cropImageTask } from "./cropImage";
 import { extractFrameTask } from "./extractFrame";
 
+interface FlowNode {
+  id: string;
+  type: string;
+  data: Record<string, unknown>;
+}
+
+interface FlowEdge {
+  source: string;
+  target: string;
+  targetHandle: string;
+}
+
 type NodeStatus = "running" | "success" | "error";
 
-async function emitStatus(serverUrl: string, nodeId: string, status: NodeStatus) {
+async function emitStatus(serverUrl: string, nodeId: string, status: NodeStatus): Promise<void> {
   try {
     await fetch(`${serverUrl}/emit-status`, {
       method: "POST",
@@ -21,30 +33,22 @@ async function emitStatus(serverUrl: string, nodeId: string, status: NodeStatus)
 }
 
 /** Kahn's algorithm — returns nodes in execution order */
-function topoSort(nodes: any[], edges: any[]): any[] {
+function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
   const inDegree = new Map<string, number>();
   const adj = new Map<string, string[]>();
-  console.log("Topological sort input nodes:", nodes);
-  console.log("Topological sort input edges:", edges);
 
   for (const node of nodes) {
     inDegree.set(node.id, 0);
     adj.set(node.id, []);
   }
-  console.log("Initial inDegree map:", inDegree);
-  console.log("Initial adjacency list:", adj);
+
   for (const edge of edges) {
     adj.get(edge.source)?.push(edge.target);
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
-  console.log("Final inDegree map after processing edges:", inDegree);
-  console.log("Final adjacency list after processing edges:", adj);
 
   const queue = nodes.filter((n) => inDegree.get(n.id) === 0);
-  const sorted: any[] = [];
-
-  console.log("Initial queue (nodes with in-degree 0):", queue);
-  console.log("Starting topological sort...",sorted);
+  const sorted: FlowNode[] = [];
 
   while (queue.length > 0) {
     const node = queue.shift()!;
@@ -56,21 +60,19 @@ function topoSort(nodes: any[], edges: any[]): any[] {
     }
   }
 
-  console.log("Topological sort result:", sorted);
-
   return sorted;
 }
 
 export const orchestratorTask = task({
   id: "orchestrator",
   maxDuration: 600,
-  run: async (payload: { nodes: any[]; edges: any[]; serverUrl: string }) => {
+  run: async (payload: { nodes: FlowNode[]; edges: FlowEdge[]; serverUrl: string }) => {
     const { nodes, edges, serverUrl } = payload;
 
     const sorted = topoSort(nodes, edges);
 
     // Stores each node's primary output value after it runs
-    const nodeOutputs: Record<string, any> = {};
+    const nodeOutputs: Record<string, unknown> = {};
 
     for (const node of sorted) {
       await emitStatus(serverUrl, node.id, "running");
@@ -78,7 +80,7 @@ export const orchestratorTask = task({
       try {
         // Collect values passed in from upstream connected nodes
         const incomingEdges = edges.filter((e) => e.target === node.id);
-        const inputs: Record<string, any> = {};
+        const inputs: Record<string, unknown> = {};
 
         for (const edge of incomingEdges) {
           const upstream = nodeOutputs[edge.source];
@@ -86,7 +88,8 @@ export const orchestratorTask = task({
 
           if (edge.targetHandle === "images") {
             // images handle accepts multiple connections → build array
-            inputs.images = [...(inputs.images ?? []), upstream];
+            const existing = inputs.images;
+            inputs.images = [...(Array.isArray(existing) ? existing : []), upstream];
           } else {
             inputs[edge.targetHandle] = upstream;
           }
@@ -95,7 +98,7 @@ export const orchestratorTask = task({
         // Merge: node's own form data first, upstream connections override
         const d = { ...node.data, ...inputs };
 
-        let output: any;
+        let output: unknown;
 
         switch (node.type) {
           case "textNode": {

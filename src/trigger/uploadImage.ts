@@ -1,8 +1,5 @@
 import { logger, task } from "@trigger.dev/sdk";
-import {Transloadit} from "transloadit";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { Transloadit } from "transloadit";
 
 const transloadit = new Transloadit({
   authKey: process.env.TRANSLOADIT_AUTH_KEY!,
