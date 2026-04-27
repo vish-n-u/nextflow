@@ -2,18 +2,19 @@
 
 import { useRef } from "react";
 import { Handle, Position, useReactFlow, type NodeProps, type Node } from "@xyflow/react";
-import { Image, Upload, X } from "lucide-react";
+import { Image, Upload, X, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 
 type UploadImageNodeType = Node<{
-  previewUrl?:  string;
-  fileBase64?:  string;
-  fileName?:    string;
-  output?:      unknown;
-  status?:      string;
-  runId?:       string | null;
-  publicToken?: string | null;
+  previewUrl?:    string;
+  fileBase64?:    string;
+  fileName?:      string;
+  output?:        unknown;
+  status?:        string;
+  errorMessage?:  string | null;
+  runId?:         string | null;
+  publicToken?:   string | null;
 }>;
 
 const SRC = "!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-900 hover:!bg-white !rounded-full transition-colors";
@@ -46,7 +47,7 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
 
   const handleUpload = async () => {
     if (!data.fileBase64) return;
-    updateNodeData(id, { status: NodeStatus.Running });
+    updateNodeData(id, { status: NodeStatus.Running, errorMessage: null });
     try {
       const res = await fetch("/api/nodes/run", {
         method: "POST",
@@ -56,11 +57,18 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
           data: { fileBase64: data.fileBase64, fileName: data.fileName },
         }),
       });
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        let msg = "Upload failed. Please try again.";
+        try { const body = await res.json() as { error?: string }; if (body.error) msg = body.error; } catch {}
+        throw new Error(msg);
+      }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
-    } catch {
-      updateNodeData(id, { status: NodeStatus.Error });
+    } catch (err) {
+      updateNodeData(id, {
+        status: NodeStatus.Error,
+        errorMessage: err instanceof Error ? err.message : "Something went wrong.",
+      });
     }
   };
 
@@ -109,13 +117,22 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
           </button>
         )}
 
+        {data.errorMessage && status === NodeStatus.Error && (
+          <div className="flex items-start gap-1.5 bg-red-950/40 border border-red-500/30 rounded-lg px-2.5 py-2">
+            <AlertCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+            <p className="text-[10px] text-red-300 leading-relaxed">{data.errorMessage}</p>
+          </div>
+        )}
+
         {data.fileBase64 && (
           <button
             onClick={handleUpload}
             disabled={status === NodeStatus.Running}
-            className="nodrag w-full bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-1.5 text-xs font-semibold text-zinc-200 transition-colors"
+            className="nodrag w-full flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-1.5 text-xs font-semibold text-zinc-200 transition-colors"
           >
-            {status === NodeStatus.Running ? "Uploading…" : "Upload to Cloud"}
+            {status === NodeStatus.Running
+              ? <><Loader2 className="w-3 h-3 animate-spin" />Uploading…</>
+              : "Upload to Cloud"}
           </button>
         )}
 

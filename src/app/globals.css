@@ -24,3 +24,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── Node status pulsating glows ─────────────────────────────────────────── */
+@keyframes glow-running {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(234, 179, 8, 0.25); }
+  50%       { box-shadow: 0 0 22px 8px rgba(234, 179, 8, 0.65); }
+}
+
+@keyframes glow-success {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(34, 197, 94, 0.25); }
+  50%       { box-shadow: 0 0 22px 8px rgba(34, 197, 94, 0.65); }
+}
+
+@keyframes glow-error {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.25); }
+  50%       { box-shadow: 0 0 22px 8px rgba(239, 68, 68, 0.65); }
+}
+
+.glow-running { animation: glow-running 1s ease-in-out infinite; }
+.glow-success { animation: glow-success 1.6s ease-in-out infinite; }
+.glow-error   { animation: glow-error   1.6s ease-in-out infinite; }

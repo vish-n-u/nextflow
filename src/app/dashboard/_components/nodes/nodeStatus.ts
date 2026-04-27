@@ -11,9 +11,9 @@ export enum NodeStatus {
 }
 
 export const STATUS_BORDER: Record<string, string> = {
-  [NodeStatus.Running]: "border-yellow-500/70 shadow-lg shadow-yellow-500/40",
-  [NodeStatus.Success]: "border-green-500/70  shadow-lg shadow-green-500/40",
-  [NodeStatus.Error]:   "border-red-500/70    shadow-lg shadow-red-500/40",
+  [NodeStatus.Running]: "border-yellow-500/70 glow-running",
+  [NodeStatus.Success]: "border-green-500/70  glow-success",
+  [NodeStatus.Error]:   "border-red-500/70    glow-error",
 };
 
 /**

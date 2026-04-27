@@ -4,19 +4,20 @@ import {
   Handle, Position, useReactFlow, useNodeConnections,
   type NodeProps, type Node,
 } from "@xyflow/react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 import { LLM_MODEL_NAMES, DEFAULT_LLM_MODEL, type LLMModelName } from "@/lib/models";
 
 type RunLLMNodeType = Node<{
-  model?:        LLMModelName;
+  model?:         LLMModelName;
   system_prompt?: string;
-  user_message?: string;
-  output?:       unknown;
-  status?:       string;
-  runId?:        string | null;
-  publicToken?:  string | null;
+  user_message?:  string;
+  output?:        unknown;
+  status?:        string;
+  errorMessage?:  string | null;
+  runId?:         string | null;
+  publicToken?:   string | null;
 }>;
 
 
@@ -40,7 +41,7 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
     : selected ? "border-zinc-500" : "border-zinc-800";
 
   const handleRun = async () => {
-    updateNodeData(id, { status: NodeStatus.Running, output: null });
+    updateNodeData(id, { status: NodeStatus.Running, output: null, errorMessage: null });
     try {
       const res = await fetch("/api/nodes/run", {
         method: "POST",
@@ -55,11 +56,18 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
           },
         }),
       });
-      if (!res.ok) throw new Error("Run failed");
+      if (!res.ok) {
+        let msg = "LLM run failed. Please try again.";
+        try { const body = await res.json() as { error?: string }; if (body.error) msg = body.error; } catch {}
+        throw new Error(msg);
+      }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
-    } catch {
-      updateNodeData(id, { status: NodeStatus.Error });
+    } catch (err) {
+      updateNodeData(id, {
+        status: NodeStatus.Error,
+        errorMessage: err instanceof Error ? err.message : "Something went wrong.",
+      });
     }
   };
 
@@ -124,12 +132,21 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
           </p>
         </div>
 
+        {data.errorMessage && status === NodeStatus.Error && (
+          <div className="flex items-start gap-1.5 bg-red-950/40 border border-red-500/30 rounded-lg px-2.5 py-2">
+            <AlertCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+            <p className="text-[10px] text-red-300 leading-relaxed">{data.errorMessage}</p>
+          </div>
+        )}
+
         <button
           onClick={handleRun}
           disabled={status === NodeStatus.Running}
-          className="nodrag w-full bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-2 text-xs font-semibold text-zinc-200 transition-colors"
+          className="nodrag w-full flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-2 text-xs font-semibold text-zinc-200 transition-colors"
         >
-          {status === NodeStatus.Running ? "Running…" : "Run"}
+          {status === NodeStatus.Running
+            ? <><Loader2 className="w-3 h-3 animate-spin" />Running…</>
+            : "Run"}
         </button>
 
         {outputText && (
