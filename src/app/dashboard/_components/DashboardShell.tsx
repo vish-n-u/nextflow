@@ -7,13 +7,11 @@ import { TopBar }           from "./TopBar";
 import { LeftBar }          from "./LeftBar";
 import { FlowCanvas }       from "./FlowCanvas";
 import { RightBar }         from "./RightBar";
-import { WorkflowsModal }   from "./WorkflowsModal";
 import { getNodeMeta }        from "@/lib/nodeRegistry";
 import { useRunsStore }       from "@/lib/stores/runsStore";
 import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
-
-export function DashboardShell() {
+export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: string } = {}) {
   const [workflowName, setWorkflowName] = useState("");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
@@ -34,6 +32,7 @@ export function DashboardShell() {
   const getSnapshotFnRef         = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
   const getSelectedNodesFnRef    = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
   const loadWorkflowFnRef        = useRef<((nodes: Node[], edges: Edge[]) => void) | null>(null);
+  const pendingWorkflowRef       = useRef<{ id: string; name: string; nodes: Node[]; edges: Edge[] } | null>(null);
   const [selectedCount, setSelectedCount] = useState(0);
 
   const handleRegisterRunWorkflow = useCallback(
@@ -54,7 +53,17 @@ export function DashboardShell() {
   );
 
   const handleRegisterLoadWorkflow = useCallback(
-    (fn: (nodes: Node[], edges: Edge[]) => void) => { loadWorkflowFnRef.current = fn; },
+    (fn: (nodes: Node[], edges: Edge[]) => void) => {
+      loadWorkflowFnRef.current = fn;
+      // If a workflow was fetched before the canvas was ready, load it now
+      if (pendingWorkflowRef.current) {
+        const w = pendingWorkflowRef.current;
+        pendingWorkflowRef.current = null;
+        setActiveWorkflowId(w.id);
+        setWorkflowName(w.name);
+        fn(w.nodes, w.edges);
+      }
+    },
     [],
   );
 
@@ -63,7 +72,6 @@ export function DashboardShell() {
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
   const invalidateRuns      = useRunsStore((s) => s.invalidate);
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
-  const [openModalVisible, setOpenModalVisible] = useState(false);
   const [runError,         setRunError]         = useState<string | null>(null);
   const savedWorkflowIdRef = useRef<string | null>(null);
   const dbRunIdRef = useRef<string | null>(null);
@@ -72,16 +80,25 @@ export function DashboardShell() {
     savedWorkflowIdRef.current = id;
   };
 
-  const handleLoad = useCallback((workflow: { id: string; name: string; nodes: unknown; edges: unknown }) => {
-    // Always record the active workflow ID first — even if the canvas fn isn't
-    // registered yet, subsequent saves must target this workflow.
-    setActiveWorkflowId(workflow.id);
-    setWorkflowName(workflow.name);
-    setWorkflowStatus("idle");
-    setWorkflowRun(null);
-    setOpenModalVisible(false);
-    loadWorkflowFnRef.current?.(workflow.nodes as Node[], workflow.edges as Edge[]);
-  }, []);
+  // Auto-load workflow when arriving via /dashboard/[id]
+  useEffect(() => {
+    if (!initialWorkflowId) return;
+    fetch(`/api/workflows/${initialWorkflowId}`)
+      .then((r) => r.json())
+      .then((w: { id: string; name: string; nodes: Node[]; edges: Edge[] }) => {
+        setWorkflowName(w.name);
+        if (loadWorkflowFnRef.current) {
+          setActiveWorkflowId(w.id);
+          loadWorkflowFnRef.current(w.nodes, w.edges);
+        } else {
+          // Canvas not mounted yet — stash and load when it registers
+          pendingWorkflowRef.current = w;
+          setActiveWorkflowId(w.id);
+        }
+      })
+      .catch(() => { /* ignore — canvas stays blank */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialWorkflowId]);
 
   const handleSave = useCallback(async () => {
     if (!getSnapshotFnRef.current || saveStatus === "saving") return;
@@ -215,7 +232,6 @@ export function DashboardShell() {
         const nodeErrors    = run.metadata?.nodeErrors    as Record<string, string>  | undefined ?? {};
         const nodeDurations = run.metadata?.nodeDurations as Record<string, number>  | undefined ?? {};
 
-        const hasFailures  = Object.values(nodeStatuses).some((s) => s === "error");
         const hasSuccesses = Object.values(nodeStatuses).some((s) => s === "success");
         const finalStatus  = run.isFailed
           ? (hasSuccesses ? "partial" : "failed")
@@ -272,7 +288,6 @@ export function DashboardShell() {
         onRunWorkflow={handleRunWorkflow}
         saveStatus={saveStatus}
         onSave={handleSave}
-        onOpenWorkflows={() => setOpenModalVisible(true)}
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
         runError={runError}
@@ -305,12 +320,6 @@ export function DashboardShell() {
       </div>
     </div>
 
-    {openModalVisible && (
-      <WorkflowsModal
-        onLoad={handleLoad}
-        onClose={() => setOpenModalVisible(false)}
-      />
-    )}
     </>
   );
 }

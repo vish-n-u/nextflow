@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { Layers, Play, PanelLeft, PanelRight, Save, Check, Loader2, FolderOpen } from "lucide-react";
+import { Layers, Play, PanelLeft, PanelRight, Save, Check, Loader2 } from "lucide-react";
 
 interface TopBarProps {
   workflowName: string;
@@ -10,14 +10,13 @@ interface TopBarProps {
   onRunWorkflow: () => void;
   saveStatus: "idle" | "saving" | "saved" | "error";
   onSave: () => void;
-  onOpenWorkflows: () => void;
   onToggleLeftBar: () => void;
   onToggleRightBar: () => void;
   runError?: string | null;
   selectedCount?: number;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onOpenWorkflows, onToggleLeftBar, onToggleRightBar, runError, selectedCount = 0 }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onToggleLeftBar, onToggleRightBar, runError, selectedCount = 0 }: TopBarProps) {
   const idleLabel =
     selectedCount > 0 ? `Run (${selectedCount})` : "Run";
 
@@ -56,15 +55,6 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
       />
 
       <div className="flex items-center gap-2 shrink-0">
-        {/* Open workflows button */}
-        <button
-          onClick={onOpenWorkflows}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
-        >
-          <FolderOpen className="w-3 h-3" />
-          <span className="hidden sm:inline">Open</span>
-        </button>
-
         {/* Save button */}
         <button
           onClick={onSave}

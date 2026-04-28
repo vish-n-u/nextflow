@@ -54,7 +54,7 @@ export default function RootLayout({
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
       >
-        <body className="h-full overflow-hidden">{children}</body>
+        <body className="h-full overflow-auto">{children}</body>
       </html>
     </ClerkProvider>
   );

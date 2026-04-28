@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { DashboardShell } from "./_components/DashboardShell";
+import { WorkflowsHome } from "./_components/WorkflowsHome";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export const metadata: Metadata = { title: "My Workflows" };
 
 export default function DashboardPage() {
-  return <DashboardShell />;
+  return <WorkflowsHome />;
 }
