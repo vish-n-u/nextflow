@@ -60,7 +60,19 @@ export function DashboardShell() {
         body: JSON.stringify({
           workflowId: savedWorkflowIdRef.current ?? undefined,
           name:       workflowName || "Untitled",
-          nodes: nodes.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          nodes: nodes.map((n) => {
+            // Strip transient runtime fields — only persist config/input data
+            const {
+              status, output, errorMessage,
+              runId, publicToken, dbRunId,
+              fileBase64, previewUrl,
+              ...configData
+            } = n.data as Record<string, unknown>;
+            void status; void output; void errorMessage;
+            void runId; void publicToken; void dbRunId;
+            void fileBase64; void previewUrl;
+            return { id: n.id, type: n.type ?? "", data: configData };
+          }),
           edges: edges.map((e) => ({
             source:       e.source,
             target:       e.target,

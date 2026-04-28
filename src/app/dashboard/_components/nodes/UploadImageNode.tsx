@@ -85,8 +85,12 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
     }
   };
 
+  // Single-node run: output = { image_url: "..." }
+  // Workflow run: output = "https://..." (primary value from orchestrator)
   const uploadedUrl = data.output != null
-    ? (data.output as Record<string, unknown>).image_url as string | undefined
+    ? typeof data.output === "string"
+      ? data.output
+      : (data.output as Record<string, unknown>).image_url as string | undefined
     : undefined;
 
   return (
@@ -150,9 +154,9 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
         )}
 
         {uploadedUrl && (
-          <p className="text-[10px] text-zinc-500 break-all bg-zinc-800 rounded px-2 py-1 nodrag nopan">
-            {uploadedUrl}
-          </p>
+          <div className="rounded-lg overflow-hidden border border-zinc-700 nodrag nopan">
+            <img src={uploadedUrl} alt="Output" className="w-full object-cover max-h-48" />
+          </div>
         )}
       </div>
 

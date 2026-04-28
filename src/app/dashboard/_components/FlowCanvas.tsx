@@ -226,11 +226,18 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
       for await (const run of runs.subscribeToRun(runId)) {
         if (!mounted) break;
         const nodeStatuses = run.metadata?.nodeStatuses as Record<string, string> | undefined;
+        const nodeOutputs  = run.metadata?.nodeOutputs  as Record<string, unknown> | undefined;
         if (nodeStatuses) {
           for (const [nodeId, status] of Object.entries(nodeStatuses)) {
             if (applied[nodeId] === status) continue;
             applied[nodeId] = status;
-            updateNodeData(nodeId, { status });
+            // Also push the output value when a node succeeds so the node card
+            // can display its result inline (image preview, LLM text, etc.)
+            const update: Record<string, unknown> = { status };
+            if (status === "success" && nodeOutputs?.[nodeId] !== undefined) {
+              update.output = nodeOutputs[nodeId];
+            }
+            updateNodeData(nodeId, update);
           }
         }
         if (run.isCompleted || run.isFailed) break;

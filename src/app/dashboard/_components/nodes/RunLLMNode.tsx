@@ -88,9 +88,13 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
     }
   };
 
+  // Single-node run: output = { output: "text response" }
+  // Workflow run: output = "text response" (primary value from orchestrator)
   const outputText = data.output != null
-    ? (data.output as Record<string, unknown>).output as string | undefined
-      ?? String(data.output)
+    ? typeof data.output === "string"
+      ? data.output
+      : (data.output as Record<string, unknown>).output as string | undefined
+        ?? String(data.output)
     : null;
 
   return (

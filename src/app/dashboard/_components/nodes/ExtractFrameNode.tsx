@@ -74,8 +74,12 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
     }
   };
 
+  // Single-node run: output = { image_url: "..." }
+  // Workflow run: output = "https://..." (primary value from orchestrator)
   const outputUrl = data.output != null
-    ? (data.output as Record<string, unknown>).image_url as string | undefined
+    ? typeof data.output === "string"
+      ? data.output
+      : (data.output as Record<string, unknown>).image_url as string | undefined
     : undefined;
 
   return (
@@ -131,9 +135,9 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
         </button>
 
         {outputUrl && (
-          <p className="text-[10px] text-zinc-500 break-all bg-zinc-800 rounded px-2 py-1 nodrag nopan">
-            {outputUrl}
-          </p>
+          <div className="rounded-lg overflow-hidden border border-zinc-700 nodrag nopan">
+            <img src={outputUrl} alt="Extracted frame" className="w-full object-cover max-h-48" />
+          </div>
         )}
       </div>
 
