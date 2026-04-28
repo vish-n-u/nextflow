@@ -8,6 +8,7 @@ import { LeftBar }          from "./LeftBar";
 import { FlowCanvas }       from "./FlowCanvas";
 import { RightBar }         from "./RightBar";
 import { WorkflowsModal }   from "./WorkflowsModal";
+import { getNodeMeta }      from "@/lib/nodeRegistry";
 
 export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
@@ -54,6 +55,7 @@ export function DashboardShell() {
   const [historyKey,       setHistoryKey]       = useState(0);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openModalVisible, setOpenModalVisible] = useState(false);
+  const [runError,         setRunError]         = useState<string | null>(null);
   const STORAGE_KEY = "nextflow:activeWorkflowId";
   const savedWorkflowIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null,
@@ -124,6 +126,28 @@ export function DashboardShell() {
 
   const handleRunWorkflow = useCallback(async () => {
     if (!runWorkflowFnRef.current || workflowStatus === "running") return;
+
+    // Validate all nodes before starting
+    if (getSnapshotFnRef.current) {
+      const { nodes, edges } = getSnapshotFnRef.current();
+      const errors: string[] = [];
+      for (const node of nodes) {
+        const meta = getNodeMeta(node.type ?? "");
+        if (!meta) continue;
+        const connectedHandles = new Set(
+          edges.filter((e) => e.target === node.id).map((e) => e.targetHandle ?? ""),
+        );
+        const err = meta.validate(node.data as Record<string, unknown>, connectedHandles);
+        if (err) errors.push(`${meta.label}: ${err}`);
+      }
+      if (errors.length > 0) {
+        setRunError(errors.join(" · "));
+        setTimeout(() => setRunError(null), 5000);
+        return;
+      }
+    }
+
+    setRunError(null);
     setWorkflowStatus("running");
     try {
       const result = await runWorkflowFnRef.current();
@@ -235,7 +259,7 @@ export function DashboardShell() {
 
   return (
     <>
-    <div className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
+    <div className="h-full flex flex-col bg-[#0a0a0a] overflow-hidden">
       <TopBar
         workflowName={workflowName}
         onWorkflowNameChange={setWorkflowName}
@@ -246,6 +270,7 @@ export function DashboardShell() {
         onOpenWorkflows={() => setOpenModalVisible(true)}
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
+        runError={runError}
       />
       <div className="flex flex-1 overflow-hidden relative">
         <LeftBar

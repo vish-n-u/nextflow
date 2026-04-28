@@ -181,7 +181,7 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
           {searchResults ? (
             /* ── Search results (flat list) ── */
             searchResults.length > 0 ? (

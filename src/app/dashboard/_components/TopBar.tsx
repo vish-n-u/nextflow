@@ -13,9 +13,10 @@ interface TopBarProps {
   onOpenWorkflows: () => void;
   onToggleLeftBar: () => void;
   onToggleRightBar: () => void;
+  runError?: string | null;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onOpenWorkflows, onToggleLeftBar, onToggleRightBar }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onOpenWorkflows, onToggleLeftBar, onToggleRightBar, runError }: TopBarProps) {
   const btnLabel =
     workflowStatus === "running" ? "Running…" :
     workflowStatus === "success" ? "Done"      :
@@ -28,7 +29,8 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
     "bg-white text-black hover:bg-zinc-200";
 
   return (
-    <header className="h-12 shrink-0 flex items-center justify-between px-3 bg-zinc-950 border-b border-zinc-800 z-10 gap-2">
+    <header className="shrink-0 flex flex-col bg-zinc-950 border-b border-zinc-800 z-10">
+    <div className="h-12 flex items-center justify-between px-3 gap-2">
       <div className="flex items-center gap-2 shrink-0">
         {/* Mobile: left bar toggle */}
         <button
@@ -103,6 +105,12 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
           <PanelRight className="w-4 h-4" />
         </button>
       </div>
+    </div>
+    {runError && (
+      <div className="px-3 py-1.5 bg-red-950/60 border-t border-red-500/20 text-[11px] text-red-300 truncate">
+        {runError}
+      </div>
+    )}
     </header>
   );
 }

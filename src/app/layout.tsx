@@ -33,9 +33,9 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased`}
       >
-        <body className="min-h-full">{children}</body>
+        <body className="h-full overflow-hidden">{children}</body>
       </html>
     </ClerkProvider>
   );

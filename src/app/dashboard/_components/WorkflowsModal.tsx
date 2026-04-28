@@ -33,16 +33,21 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
 
   // Fetch workflow list on mount
   useEffect(() => {
-    fetch("/api/workflows")
-      .then(async (res) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/workflows");
         if (!res.ok) throw new Error("Failed to load workflows");
-        return res.json() as Promise<WorkflowSummary[]>;
-      })
-      .then((data) => { setWorkflows(data); setLoading(false); })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load workflows");
-        setLoading(false);
-      });
+        const data = await res.json() as WorkflowSummary[];
+        if (!cancelled) { setWorkflows(data); setLoading(false); }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load workflows");
+          setLoading(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const handleSelect = async (id: string) => {
@@ -67,8 +72,8 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+        <div className="pointer-events-auto w-full sm:max-w-md bg-zinc-950 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
@@ -86,7 +91,7 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto max-h-[60vh] p-3">
+          <div className="flex-1 overflow-y-auto max-h-[50dvh] sm:max-h-[60dvh] p-3">
             {loading && (
               <div className="flex items-center justify-center h-32">
                 <RefreshCw className="w-4 h-4 text-zinc-600 animate-spin" />

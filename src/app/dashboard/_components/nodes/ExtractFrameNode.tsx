@@ -41,6 +41,10 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
     : selected ? "border-zinc-500" : "border-zinc-800";
 
   const handleRun = async () => {
+    if (!String(data.timestamp ?? "").trim() && timestampConns.length === 0) {
+      updateNodeData(id, { status: NodeStatus.Error, errorMessage: "Timestamp is required." });
+      return;
+    }
     updateNodeData(id, { status: NodeStatus.Running, output: null, errorMessage: null });
     try {
       const res = await fetch("/api/nodes/run", {

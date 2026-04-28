@@ -350,7 +350,7 @@ export function RightBar({ selectedNode, isOpen = true, onClose, historyKey }: R
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3">
           {tab === "history"
             ? <HistoryTab historyKey={historyKey} />
             : <PropertiesTab selectedNode={selectedNode} />}
