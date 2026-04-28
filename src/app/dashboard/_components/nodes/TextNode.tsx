@@ -3,6 +3,7 @@
 import { Handle, Position, useReactFlow, type NodeProps, type Node } from "@xyflow/react";
 import { Type } from "lucide-react";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
+import { useIsWorkflowRunning } from "./WorkflowRunContext";
 
 type TextNodeType = Node<{ text?: string; status?: string }>;
 
@@ -10,9 +11,11 @@ const SRC = "!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-900 hover:!bg-white !
 
 export function TextNode({ id, data, selected }: NodeProps<TextNodeType>) {
   const { updateNodeData } = useReactFlow();
+  const isWorkflowRunning = useIsWorkflowRunning();
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);
+  const locked = isWorkflowRunning || status === NodeStatus.Running;
 
   const border = status !== NodeStatus.Idle
     ? (STATUS_BORDER[status] ?? "border-zinc-800")
@@ -30,10 +33,11 @@ export function TextNode({ id, data, selected }: NodeProps<TextNodeType>) {
 
       <div className="p-3">
         <textarea
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-zinc-500 resize-none nodrag nopan"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-zinc-500 resize-none nodrag nopan disabled:opacity-40 disabled:cursor-not-allowed"
           rows={4}
           placeholder="Enter text…"
           value={data.text ?? ""}
+          disabled={locked}
           onChange={(e) => updateNodeData(id, { text: e.target.value })}
         />
       </div>

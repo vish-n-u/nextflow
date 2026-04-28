@@ -9,6 +9,7 @@ import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 import { LLM_MODEL_NAMES, DEFAULT_LLM_MODEL, type LLMModelName } from "@/lib/models";
 import { trackSingleRun } from "./trackSingleRun";
+import { useIsWorkflowRunning } from "./WorkflowRunContext";
 
 type RunLLMNodeType = Node<{
   model?:         LLMModelName;
@@ -31,12 +32,14 @@ const connectedCls = "text-[10px] text-zinc-600 italic px-2 py-2 bg-zinc-800/40 
 
 export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
   const { updateNodeData } = useReactFlow();
+  const isWorkflowRunning = useIsWorkflowRunning();
   const syspromptConns = useNodeConnections({ handleType: "target", handleId: "system_prompt" });
   const usermsgConns   = useNodeConnections({ handleType: "target", handleId: "user_message" });
   const imagesConns    = useNodeConnections({ handleType: "target", handleId: "images" });
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);
+  const locked = isWorkflowRunning || status === NodeStatus.Running;
 
   const border = status !== NodeStatus.Idle
     ? (STATUS_BORDER[status] ?? "border-zinc-800")
@@ -110,7 +113,8 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
           <select
             value={data.model ?? DEFAULT_LLM_MODEL}
             onChange={(e) => updateNodeData(id, { model: e.target.value })}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-zinc-500 nodrag nopan"
+            disabled={locked}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-zinc-500 nodrag nopan disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {LLM_MODEL_NAMES.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
@@ -124,6 +128,7 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
             : <textarea rows={2} placeholder="Optional system instructions…"
                 value={data.system_prompt ?? ""}
                 onChange={(e) => updateNodeData(id, { system_prompt: e.target.value })}
+                disabled={locked}
                 className={textareaCls} />}
         </div>
 
@@ -135,6 +140,7 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
             : <textarea rows={3} placeholder="Enter user message…"
                 value={data.user_message ?? ""}
                 onChange={(e) => updateNodeData(id, { user_message: e.target.value })}
+                disabled={locked}
                 className={textareaCls} />}
         </div>
 
@@ -155,7 +161,7 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
 
         <button
           onClick={handleRun}
-          disabled={status === NodeStatus.Running}
+          disabled={locked}
           className="nodrag w-full flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-2 text-xs font-semibold text-zinc-200 transition-colors"
         >
           {status === NodeStatus.Running

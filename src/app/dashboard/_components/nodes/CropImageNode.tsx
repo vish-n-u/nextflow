@@ -8,6 +8,7 @@ import { Scissors, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 import { trackSingleRun } from "./trackSingleRun";
+import { useIsWorkflowRunning } from "./WorkflowRunContext";
 
 type CropImageNodeType = Node<{
   x_percent?:      number;
@@ -33,9 +34,10 @@ interface CropFieldProps {
   label:    string;
   value:    number | undefined;
   onChange: (v: number) => void;
+  disabled?: boolean;
 }
 
-function CropField({ handleId, label, value, onChange }: CropFieldProps) {
+function CropField({ handleId, label, value, onChange, disabled }: CropFieldProps) {
   const conns = useNodeConnections({ handleType: "target", handleId });
   return (
     <div className="relative">
@@ -46,6 +48,7 @@ function CropField({ handleId, label, value, onChange }: CropFieldProps) {
         : <input type="number" min={0} max={100}
             value={value ?? 0}
             onChange={(e) => onChange(Number(e.target.value))}
+            disabled={disabled}
             className={inputCls} />}
     </div>
   );
@@ -53,10 +56,12 @@ function CropField({ handleId, label, value, onChange }: CropFieldProps) {
 
 export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeType>) {
   const { updateNodeData } = useReactFlow();
+  const isWorkflowRunning = useIsWorkflowRunning();
   const imageConns = useNodeConnections({ handleType: "target", handleId: "image_url" });
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);
+  const locked = isWorkflowRunning || status === NodeStatus.Running;
 
   const border = status !== NodeStatus.Idle
     ? (STATUS_BORDER[status] ?? "border-zinc-800")
@@ -135,10 +140,10 @@ export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeTyp
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <CropField handleId="x_percent"      label="X %"      value={data.x_percent}      onChange={(v) => updateNodeData(id, { x_percent: v })} />
-          <CropField handleId="y_percent"      label="Y %"      value={data.y_percent}      onChange={(v) => updateNodeData(id, { y_percent: v })} />
-          <CropField handleId="width_percent"  label="Width %"  value={data.width_percent}  onChange={(v) => updateNodeData(id, { width_percent: v })} />
-          <CropField handleId="height_percent" label="Height %" value={data.height_percent} onChange={(v) => updateNodeData(id, { height_percent: v })} />
+          <CropField handleId="x_percent"      label="X %"      value={data.x_percent}      onChange={(v) => updateNodeData(id, { x_percent: v })}      disabled={locked} />
+          <CropField handleId="y_percent"      label="Y %"      value={data.y_percent}      onChange={(v) => updateNodeData(id, { y_percent: v })}      disabled={locked} />
+          <CropField handleId="width_percent"  label="Width %"  value={data.width_percent}  onChange={(v) => updateNodeData(id, { width_percent: v })}  disabled={locked} />
+          <CropField handleId="height_percent" label="Height %" value={data.height_percent} onChange={(v) => updateNodeData(id, { height_percent: v })} disabled={locked} />
         </div>
 
         {data.errorMessage && status === NodeStatus.Error && (
@@ -150,7 +155,7 @@ export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeTyp
 
         <button
           onClick={handleRun}
-          disabled={status === NodeStatus.Running || imageConns.length === 0}
+          disabled={locked || imageConns.length === 0}
           className="nodrag w-full flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-2 text-xs font-semibold text-zinc-200 transition-colors"
         >
           {status === NodeStatus.Running

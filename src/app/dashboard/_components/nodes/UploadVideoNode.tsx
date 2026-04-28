@@ -6,6 +6,7 @@ import { Video, Upload, X, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 import { trackSingleRun } from "./trackSingleRun";
+import { useIsWorkflowRunning } from "./WorkflowRunContext";
 
 type UploadVideoNodeType = Node<{
   previewUrl?:    string;
@@ -23,10 +24,12 @@ const SRC = "!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-900 hover:!bg-white !
 
 export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNodeType>) {
   const { updateNodeData } = useReactFlow();
+  const isWorkflowRunning = useIsWorkflowRunning();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const status = data.status ?? NodeStatus.Idle;
   useStatusGlow(id, status);
+  const locked = isWorkflowRunning || status === NodeStatus.Running;
 
   const border = status !== NodeStatus.Idle
     ? (STATUS_BORDER[status] ?? "border-zinc-800")
@@ -112,15 +115,15 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
         {data.previewUrl ? (
           <div className="relative">
             <video src={data.previewUrl} controls className="w-full rounded-lg max-h-40 nodrag nopan" />
-            <button onClick={handleClear}
-              className="nodrag absolute top-1.5 right-1.5 w-6 h-6 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 rounded-full flex items-center justify-center transition-colors">
+            <button onClick={handleClear} disabled={locked}
+              className="nodrag absolute top-1.5 right-1.5 w-6 h-6 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 rounded-full flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <X className="w-3 h-3 text-zinc-300" />
             </button>
             <p className="mt-1 text-[10px] text-zinc-600 truncate">{data.fileName}</p>
           </div>
         ) : (
-          <button onClick={() => inputRef.current?.click()}
-            className="nodrag w-full flex flex-col items-center gap-2 py-6 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-lg text-zinc-600 hover:text-zinc-400 transition-colors">
+          <button onClick={() => { if (!locked) inputRef.current?.click(); }} disabled={locked}
+            className="nodrag w-full flex flex-col items-center gap-2 py-6 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-lg text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-700 disabled:hover:text-zinc-600">
             <Upload className="w-5 h-5" />
             <span className="text-xs">Click to upload video</span>
             <span className="text-[10px] text-zinc-700">MP4, MOV, WebM</span>
@@ -137,7 +140,7 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
         {data.fileBase64 && (
           <button
             onClick={handleUpload}
-            disabled={status === NodeStatus.Running}
+            disabled={locked}
             className="nodrag w-full flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700 rounded-lg py-1.5 text-xs font-semibold text-zinc-200 transition-colors"
           >
             {status === NodeStatus.Running

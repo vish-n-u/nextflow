@@ -202,6 +202,7 @@ export function DashboardShell() {
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
           onRegisterGetSnapshot={handleRegisterGetSnapshot}
           workflowRun={workflowRun}
+          isWorkflowRunning={workflowStatus === "running"}
         />
         <RightBar
           selectedNode={selectedNode}

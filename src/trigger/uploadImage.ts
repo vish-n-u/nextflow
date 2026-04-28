@@ -25,10 +25,6 @@ export const uploadImageTask = task({
         steps: {
           ":original": {
             robot: "/upload/handle",
-          },
-          exported: {
-            use: ":original",
-            robot: "/file/store",
             result: true,
           },
         },
@@ -39,7 +35,8 @@ export const uploadImageTask = task({
       options.params!.files = { file: tempUrl };
     } else if (fileBase64) {
       const buffer = Buffer.from(fileBase64, "base64");
-      options.files = { file: { name: fileName, data: buffer } };
+      // `uploads` accepts Buffer/Readable directly; `files` only accepts file paths (strings)
+      options.uploads = { file: buffer };
     }
 
     const assembly = await transloadit.createAssembly(options);
@@ -48,7 +45,7 @@ export const uploadImageTask = task({
       throw new Error(`Transloadit error: ${assembly.error} — ${assembly.message}`);
     }
 
-    const uploaded = assembly.results?.exported?.[0];
+    const uploaded = assembly.results?.[":original"]?.[0];
 
     if (!uploaded?.ssl_url) {
       throw new Error("Upload succeeded but no URL returned from Transloadit");

@@ -23,11 +23,36 @@ import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
 import { isValidHandleConnection } from "@/lib/nodeContracts";
+import { WorkflowRunContext } from "./nodes/WorkflowRunContext";
 
 const nodeTypes = COMPONENT_REGISTRY;
 
 function getDefaultData(type: string): Record<string, unknown> {
   return getNodeMeta(type)?.defaultData ?? {};
+}
+
+/**
+ * Returns true if adding the edge source→target would create a cycle.
+ * Uses BFS: walks forward from `target` through existing edges; if it
+ * can reach `source`, the new edge would close a loop.
+ */
+function wouldCreateCycle(source: string, target: string, edges: Edge[]): boolean {
+  const adj = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!adj.has(e.source)) adj.set(e.source, []);
+    adj.get(e.source)!.push(e.target);
+  }
+
+  const visited = new Set<string>();
+  const queue   = [target];
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    if (node === source) return true;
+    if (visited.has(node)) continue;
+    visited.add(node);
+    for (const neighbour of adj.get(node) ?? []) queue.push(neighbour);
+  }
+  return false;
 }
 
 // ─── History ──────────────────────────────────────────────────────────────────
@@ -43,9 +68,10 @@ interface FlowCanvasInnerProps {
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   workflowRun: { runId: string; publicToken: string } | null;
+  isWorkflowRunning: boolean;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, workflowRun }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition, getNode, updateNodeData } = useReactFlow();
@@ -134,6 +160,13 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
       const src = getNode(connection.source);
       const tgt = getNode(connection.target);
       if (!src || !tgt) return false;
+
+      // Reject self-loops
+      if (connection.source === connection.target) return false;
+
+      // Reject edges that would create a cycle (enforce DAG invariant)
+      if (wouldCreateCycle(connection.source, connection.target, edgesRef.current)) return false;
+
       return isValidHandleConnection(
         src.type ?? "",
         connection.sourceHandle ?? "output",
@@ -225,6 +258,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   );
 
   return (
+    <WorkflowRunContext.Provider value={isWorkflowRunning}>
     <div className="flex-1 h-full bg-[#0a0a0a]" onDrop={onDrop} onDragOver={onDragOver}>
       <ReactFlow
         nodes={nodes}
@@ -262,6 +296,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         />
       </ReactFlow>
     </div>
+    </WorkflowRunContext.Provider>
   );
 }
 
@@ -274,6 +309,7 @@ interface FlowCanvasProps {
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   workflowRun: { runId: string; publicToken: string } | null;
+  isWorkflowRunning: boolean;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {
@@ -283,3 +319,4 @@ export function FlowCanvas(props: FlowCanvasProps) {
     </ReactFlowProvider>
   );
 }
+
