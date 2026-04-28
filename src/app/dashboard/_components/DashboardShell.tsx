@@ -12,7 +12,6 @@ import { getNodeMeta }        from "@/lib/nodeRegistry";
 import { useRunsStore }       from "@/lib/stores/runsStore";
 import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
-const STORAGE_KEY = "nextflow:activeWorkflowId";
 
 export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
@@ -66,16 +65,11 @@ export function DashboardShell() {
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
   const [openModalVisible, setOpenModalVisible] = useState(false);
   const [runError,         setRunError]         = useState<string | null>(null);
-  const savedWorkflowIdRef = useRef<string | null>(
-    typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null,
-  );
+  const savedWorkflowIdRef = useRef<string | null>(null);
   const dbRunIdRef = useRef<string | null>(null);
 
-  // Keep localStorage in sync with the ref
   const setActiveWorkflowId = (id: string | null) => {
     savedWorkflowIdRef.current = id;
-    if (id) localStorage.setItem(STORAGE_KEY, id);
-    else     localStorage.removeItem(STORAGE_KEY);
   };
 
   const handleLoad = useCallback((workflow: { id: string; name: string; nodes: unknown; edges: unknown }) => {

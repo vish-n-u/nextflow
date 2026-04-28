@@ -1,13 +1,13 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   BackgroundVariant,
-  Controls,
+  Panel,
   MiniMap,
   addEdge,
   useNodesState,
@@ -20,9 +20,10 @@ import {
   type Connection,
   type IsValidConnection,
   type FitViewOptions,
+  type OnSelectionChangeParams,
 } from "@xyflow/react";
 
-import { Play } from "lucide-react";
+import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, type LucideIcon } from "lucide-react";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
@@ -105,6 +106,42 @@ function SelectionOverlay({ onRun }: { onRun: () => void }) {
   );
 }
 
+// ─── Bottom toolbar ───────────────────────────────────────────────────────────
+
+type CanvasMode = "select" | "pan";
+
+function ToolBtn({ icon: Icon, active, onClick, title }: { icon: LucideIcon; active?: boolean; onClick: () => void; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-2 rounded-lg transition-colors ${
+        active
+          ? "bg-zinc-700 text-white"
+          : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  );
+}
+
+function BottomToolbar({ mode, onModeChange }: { mode: CanvasMode; onModeChange: (m: CanvasMode) => void }) {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  return (
+    <Panel position="bottom-center" style={{ marginBottom: "1rem" }}>
+      <div className="flex items-center gap-0.5 bg-zinc-900/95 backdrop-blur-sm border border-zinc-800 rounded-2xl px-2 py-1.5 shadow-2xl">
+        <ToolBtn icon={MousePointer2} active={mode === "select"} onClick={() => onModeChange("select")} title="Select  (S)" />
+        <ToolBtn icon={Hand}          active={mode === "pan"}    onClick={() => onModeChange("pan")}    title="Pan  (H)" />
+        <div className="w-px h-5 bg-zinc-700 mx-1.5" />
+        <ToolBtn icon={ZoomIn}   onClick={() => zoomIn()}                              title="Zoom In" />
+        <ToolBtn icon={ZoomOut}  onClick={() => zoomOut()}                             title="Zoom Out" />
+        <ToolBtn icon={Maximize2} onClick={() => fitView({ padding: 0.15 } as FitViewOptions)} title="Fit View" />
+      </div>
+    </Panel>
+  );
+}
+
 // ─── Inner component (lives inside ReactFlowProvider) ────────────────────────
 
 interface FlowCanvasInnerProps {
@@ -124,6 +161,7 @@ interface FlowCanvasInnerProps {
 function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onRunSelected, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>("pan");
   const { screenToFlowPosition, getNode, updateNodeData, fitView } = useReactFlow();
 
   // Keep refs to latest state for the workflow-run fn and history saves
@@ -172,6 +210,16 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
+
+      // Mode shortcuts (no modifier)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "s" || e.key === "S") { setCanvasMode("select"); return; }
+        if (e.key === "h" || e.key === "H") { setCanvasMode("pan");    return; }
+      }
+
+      // Undo / redo
       if (!(e.ctrlKey || e.metaKey)) return;
       if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (e.key === "y" || (e.key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
@@ -284,7 +332,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   // Track selection count so TopBar label can update
   const lastCountRef = useRef(0);
   const handleSelectionChange = useCallback(
-    ({ nodes: sel }: { nodes: Node[] }) => {
+    ({ nodes: sel }: OnSelectionChangeParams) => {
       if (sel.length !== lastCountRef.current) {
         lastCountRef.current = sel.length;
         onSelectedCountChange(sel.length);
@@ -391,6 +439,9 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         fitView={false}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         proOptions={{ hideAttribution: true }}
+        panOnDrag={canvasMode === "pan"}
+        selectionOnDrag={canvasMode === "select"}
+        selectionMode="partial"
       >
         <Background
           variant={BackgroundVariant.Dots}
@@ -399,7 +450,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
           color="#27272a"
           style={{ backgroundColor: "#0a0a0a" }}
         />
-        <Controls className="!border-zinc-800 !bg-zinc-900 [&>button]:!border-zinc-800 [&>button]:!bg-zinc-900 [&>button]:!text-zinc-400 [&>button:hover]:!bg-zinc-800 [&>button:hover]:!text-zinc-100" />
+        <BottomToolbar mode={canvasMode} onModeChange={setCanvasMode} />
         <MiniMap
           position="bottom-right"
           nodeColor="#3f3f46"
