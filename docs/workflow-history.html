@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NextFlow — Workflow History System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111111;
+      --surface2:  #18181b;
+      --surface3:  #1f1f23;
+      --border:    #27272a;
+      --border2:   #3f3f46;
+      --text:      #e4e4e7;
+      --muted:     #71717a;
+      --accent:    #6366f1;
+      --accent2:   #818cf8;
+      --yellow:    #eab308;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --orange:    #f97316;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 48px 24px 80px;
+    }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; }
+
+    .page-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 28px;
+      margin-bottom: 52px;
+    }
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .page-header p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-yellow { background: rgba(234,179,8,.15);  color: var(--yellow); border: 1px solid rgba(234,179,8,.3); }
+    .badge-green  { background: rgba(34,197,94,.15);  color: var(--green);  border: 1px solid rgba(34,197,94,.3); }
+    .badge-red    { background: rgba(239,68,68,.15);  color: var(--red);    border: 1px solid rgba(239,68,68,.3); }
+    .badge-orange { background: rgba(249,115,22,.15); color: var(--orange); border: 1px solid rgba(249,115,22,.3); }
+    .badge-indigo { background: rgba(99,102,241,.15); color: var(--accent2); border: 1px solid rgba(99,102,241,.3); }
+    .badge-zinc   { background: rgba(63,63,70,.3);    color: #a1a1aa;       border: 1px solid var(--border2); }
+
+    /* ── Section ── */
+    section { margin-bottom: 60px; }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #d4d4d8;
+      margin-bottom: 10px;
+    }
+    p { color: #a1a1aa; font-size: 13px; line-height: 1.7; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+    .card + .card { margin-top: 12px; }
+    .card-sm {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    @media (max-width: 720px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Flow Diagram ── */
+    .flow {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 130px;
+    }
+    .flow-box {
+      width: 120px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .flow-box .icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .flow-box .title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #d4d4d8;
+      line-height: 1.3;
+    }
+    .flow-box .sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      padding-top: 28px;
+      color: var(--border2);
+      font-size: 18px;
+      min-width: 32px;
+      justify-content: center;
+    }
+    .flow-label {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 6px;
+      text-align: center;
+      max-width: 110px;
+      line-height: 1.4;
+    }
+    .flow-box.highlight {
+      border-color: var(--accent);
+      background: rgba(99,102,241,.08);
+    }
+    .flow-box.db {
+      border-color: #059669;
+      background: rgba(5,150,105,.08);
+    }
+
+    /* ── Schema Table ── */
+    .schema-model {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .schema-model-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .model-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent2);
+      font-family: 'Consolas', 'Fira Code', monospace;
+    }
+    .model-desc {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    td {
+      padding: 9px 18px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .col-field { font-family: 'Consolas', 'Fira Code', monospace; color: #e2e8f0; font-weight: 500; }
+    .col-type  { font-family: 'Consolas', 'Fira Code', monospace; color: #7dd3fc; }
+    .col-note  { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .col-req   { text-align: center; }
+    .dot-req   { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+    .dot-opt   { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--border2); }
+    .pk        { font-size: 9px; color: var(--yellow); border: 1px solid rgba(234,179,8,.4); border-radius: 3px; padding: 1px 4px; margin-left: 4px; }
+    .fk        { font-size: 9px; color: var(--accent2); border: 1px solid rgba(99,102,241,.4); border-radius: 3px; padding: 1px 4px; margin-left: 4px; }
+
+    /* ── Enum Chips ── */
+    .enum-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .enum-name {
+      font-size: 11px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      color: var(--accent2);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .enum-values { display: flex; flex-wrap: wrap; gap: 6px; }
+    .enum-val {
+      font-size: 11px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      padding: 3px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: #d4d4d8;
+    }
+
+    /* ── API Route ── */
+    .route-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .route-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .method {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+    .method-get  { background: rgba(34,197,94,.15);  color: var(--green);  border: 1px solid rgba(34,197,94,.3); }
+    .method-post { background: rgba(99,102,241,.15); color: var(--accent2); border: 1px solid rgba(99,102,241,.3); }
+    .method-patch{ background: rgba(249,115,22,.15); color: var(--orange); border: 1px solid rgba(249,115,22,.3); }
+    .route-path {
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #e2e8f0;
+    }
+    .route-title {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .route-body { padding: 14px 18px; }
+    .route-body p { margin-bottom: 8px; }
+
+    /* ── Code block ── */
+    pre {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: #d4d4d8;
+    }
+    .kw  { color: #c792ea; }
+    .str { color: #c3e88d; }
+    .num { color: #f78c6c; }
+    .cmt { color: #546e7a; font-style: italic; }
+    .key { color: #82aaff; }
+    .typ { color: #7dd3fc; }
+
+    /* ── UI Wireframe ── */
+    .wireframe {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      font-family: 'Consolas', 'Fira Code', monospace;
+    }
+    .wf-topbar {
+      background: var(--surface3);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .wf-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .wf-tab {
+      padding: 7px 16px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .wf-tab.active { color: #fff; border-bottom-color: var(--accent); }
+    .wf-content { padding: 12px; }
+    .run-row {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    .run-row:hover { border-color: var(--border2); }
+    .run-row-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .run-row-meta { font-size: 10px; color: var(--muted); }
+    .node-run-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 4px;
+      font-size: 10px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-g { background: var(--green); }
+    .dot-r { background: var(--red); }
+    .dot-y { background: var(--yellow); }
+    .dot-z { background: var(--border2); }
+    .node-label { color: #d4d4d8; flex: 1; }
+    .node-time  { color: var(--muted); }
+
+    /* ── Step List ── */
+    .step-list { list-style: none; padding: 0; }
+    .step-list li {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(99,102,241,.4);
+      color: var(--accent2);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-content h4 { font-size: 13px; font-weight: 600; color: #d4d4d8; margin-bottom: 3px; }
+    .step-content p  { font-size: 12px; color: var(--muted); }
+
+    /* ── Relation diagram ── */
+    .rel-diagram {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding: 20px 0;
+    }
+    .rel-box {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      min-width: 140px;
+      overflow: hidden;
+    }
+    .rel-box-title {
+      background: var(--surface3);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--accent2);
+    }
+    .rel-box-fields { padding: 8px 12px; }
+    .rel-field {
+      font-size: 10px;
+      font-family: monospace;
+      color: #a1a1aa;
+      padding: 2px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .rel-field .fname { color: #d4d4d8; }
+    .rel-field .ftype { color: #7dd3fc; }
+    .rel-conn {
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: var(--border2);
+      font-size: 22px;
+      white-space: nowrap;
+    }
+    .rel-label {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-align: center;
+    }
+    .rel-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    hr.section-rule {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    .inline-code {
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 11.5px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #c3e88d;
+    }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;font-size:15px;">N</div>
+      <span style="font-size:12px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">NextFlow</span>
+    </div>
+    <h1>Workflow History System</h1>
+    <p>Architecture reference — database schema, API routes, data flow, and UI structure for the run history right sidebar.</p>
+  </header>
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 1. SYSTEM OVERVIEW                                     -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">01 — System Overview</div>
+    <h2>How the pieces connect</h2>
+    <p style="margin-bottom:24px;">Every time a workflow (or single node) runs, the system follows this path — from button click to persisted history entry visible in the sidebar.</p>
+
+    <div class="flow" style="gap:0">
+      <!-- Step 1 -->
+      <div class="flow-step">
+        <div class="flow-box">
+          <div class="icon">▶</div>
+          <div class="title">User clicks Run</div>
+          <div class="sub">TopBar button</div>
+        </div>
+        <div class="flow-label">DashboardShell.<br>handleRunWorkflow()</div>
+      </div>
+      <div class="flow-arrow">→</div>
+
+      <!-- Step 2 -->
+      <div class="flow-step">
+        <div class="flow-box highlight">
+          <div class="icon">⚡</div>
+          <div class="title">Trigger.dev fires</div>
+          <div class="sub">POST /api/nodes/run</div>
+        </div>
+        <div class="flow-label">Returns runId +<br>publicToken</div>
+      </div>
+      <div class="flow-arrow">→</div>
+
+      <!-- Step 3 -->
+      <div class="flow-step">
+        <div class="flow-box db">
+          <div class="icon">🗄</div>
+          <div class="title">DB record created</div>
+          <div class="sub">POST /api/runs</div>
+        </div>
+        <div class="flow-label">Run + NodeRun rows<br>written to Postgres</div>
+      </div>
+      <div class="flow-arrow">→</div>
+
+      <!-- Step 4 -->
+      <div class="flow-step">
+        <div class="flow-box">
+          <div class="icon">📡</div>
+          <div class="title">Subscribe to run</div>
+          <div class="sub">Trigger.dev SSE</div>
+        </div>
+        <div class="flow-label">streams nodeStatuses<br>via metadata</div>
+      </div>
+      <div class="flow-arrow">→</div>
+
+      <!-- Step 5 -->
+      <div class="flow-step">
+        <div class="flow-box db">
+          <div class="icon">✓</div>
+          <div class="title">DB record updated</div>
+          <div class="sub">PATCH /api/runs/[id]</div>
+        </div>
+        <div class="flow-label">Status, duration,<br>node outputs saved</div>
+      </div>
+      <div class="flow-arrow">→</div>
+
+      <!-- Step 6 -->
+      <div class="flow-step">
+        <div class="flow-box highlight">
+          <div class="icon">≡</div>
+          <div class="title">History sidebar</div>
+          <div class="sub">GET /api/runs</div>
+        </div>
+        <div class="flow-label">Shows run list<br>with node detail</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 2. DATABASE SCHEMA                                     -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">02 — Database Schema</div>
+    <h2>PostgreSQL via Prisma</h2>
+    <p style="margin-bottom:24px;">All models are already defined in <span class="inline-code">prisma/schema.prisma</span>. No additional migrations are required — just generate the client and connect.</p>
+
+    <!-- Entity relation -->
+    <div class="card" style="margin-bottom:24px;">
+      <h3 style="margin-bottom:16px;color:var(--muted);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;">Entity Relationships</h3>
+      <div class="rel-diagram">
+        <div class="rel-wrap">
+          <div class="rel-box">
+            <div class="rel-box-title">User</div>
+            <div class="rel-box-fields">
+              <div class="rel-field"><span class="fname">id</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">email</span><span class="ftype">String?</span></div>
+              <div class="rel-field"><span class="fname">createdAt</span><span class="ftype">DateTime</span></div>
+            </div>
+          </div>
+          <div class="rel-label">Clerk userId</div>
+        </div>
+
+        <div class="rel-conn">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px;">1 : many</div>
+            ─────→
+          </div>
+        </div>
+
+        <div class="rel-wrap">
+          <div class="rel-box">
+            <div class="rel-box-title">Workflow</div>
+            <div class="rel-box-fields">
+              <div class="rel-field"><span class="fname">id</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">name</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">userId</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">nodes</span><span class="ftype">Json</span></div>
+              <div class="rel-field"><span class="fname">edges</span><span class="ftype">Json</span></div>
+            </div>
+          </div>
+          <div class="rel-label">canvas snapshot</div>
+        </div>
+
+        <div class="rel-conn">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px;">1 : many</div>
+            ─────→
+          </div>
+        </div>
+
+        <div class="rel-wrap">
+          <div class="rel-box" style="border-color:rgba(99,102,241,.5);">
+            <div class="rel-box-title" style="background:rgba(99,102,241,.08);">Run</div>
+            <div class="rel-box-fields">
+              <div class="rel-field"><span class="fname">id</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">workflowId</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">userId</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">status</span><span class="ftype">RunStatus</span></div>
+              <div class="rel-field"><span class="fname">scope</span><span class="ftype">RunScope</span></div>
+              <div class="rel-field"><span class="fname">startedAt</span><span class="ftype">DateTime</span></div>
+              <div class="rel-field"><span class="fname">completedAt</span><span class="ftype">DateTime?</span></div>
+              <div class="rel-field"><span class="fname">durationMs</span><span class="ftype">Int?</span></div>
+            </div>
+          </div>
+          <div class="rel-label">one per execution</div>
+        </div>
+
+        <div class="rel-conn">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px;">1 : many</div>
+            ─────→
+          </div>
+        </div>
+
+        <div class="rel-wrap">
+          <div class="rel-box">
+            <div class="rel-box-title">NodeRun</div>
+            <div class="rel-box-fields">
+              <div class="rel-field"><span class="fname">id</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">runId</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">nodeId</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">nodeType</span><span class="ftype">String</span></div>
+              <div class="rel-field"><span class="fname">status</span><span class="ftype">NodeStatus</span></div>
+              <div class="rel-field"><span class="fname">input</span><span class="ftype">Json?</span></div>
+              <div class="rel-field"><span class="fname">output</span><span class="ftype">Json?</span></div>
+              <div class="rel-field"><span class="fname">error</span><span class="ftype">String?</span></div>
+              <div class="rel-field"><span class="fname">durationMs</span><span class="ftype">Int?</span></div>
+            </div>
+          </div>
+          <div class="rel-label">one per node per run</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Run model -->
+    <div class="schema-model">
+      <div class="schema-model-header">
+        <span class="model-name">model Run</span>
+        <span class="model-desc">— one record per execution (full workflow, partial, or single node)</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th style="text-align:center">Req</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-field">id <span class="pk">PK</span></td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note"><span class="inline-code">@default(cuid())</span> — collision-resistant unique ID</td>
+          </tr>
+          <tr>
+            <td class="col-field">workflowId <span class="fk">FK</span></td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">References <span class="inline-code">Workflow.id</span>. Auto-upsert the workflow record on every run using workflowName + userId.</td>
+          </tr>
+          <tr>
+            <td class="col-field">userId <span class="fk">FK</span></td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">Clerk user ID from <span class="inline-code">auth()</span> in the API route</td>
+          </tr>
+          <tr>
+            <td class="col-field">status</td>
+            <td class="col-type">RunStatus</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">Enum: <span class="badge badge-yellow">running</span> <span class="badge badge-green">success</span> <span class="badge badge-red">failed</span> <span class="badge badge-orange">partial</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">scope</td>
+            <td class="col-type">RunScope</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">Enum: <span class="badge badge-indigo">full</span> <span class="badge badge-zinc">partial</span> <span class="badge badge-zinc">single</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">triggerRunId</td>
+            <td class="col-type">String?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">The Trigger.dev run ID — stored so the subscription can be matched back to the DB record</td>
+          </tr>
+          <tr>
+            <td class="col-field">startedAt</td>
+            <td class="col-type">DateTime</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note"><span class="inline-code">@default(now())</span> — set automatically on creation</td>
+          </tr>
+          <tr>
+            <td class="col-field">completedAt</td>
+            <td class="col-type">DateTime?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Written by <span class="inline-code">PATCH /api/runs/[id]</span> when the Trigger.dev run ends</td>
+          </tr>
+          <tr>
+            <td class="col-field">durationMs</td>
+            <td class="col-type">Int?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Computed: <span class="inline-code">completedAt - startedAt</span> in milliseconds</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- NodeRun model -->
+    <div class="schema-model">
+      <div class="schema-model-header">
+        <span class="model-name">model NodeRun</span>
+        <span class="model-desc">— one record per node per execution</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th style="text-align:center">Req</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-field">id <span class="pk">PK</span></td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note"><span class="inline-code">@default(cuid())</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">runId <span class="fk">FK</span></td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">References <span class="inline-code">Run.id</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">nodeId</td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">React Flow node ID (e.g. <span class="inline-code">uploadImageNode-1714200000000</span>)</td>
+          </tr>
+          <tr>
+            <td class="col-field">nodeType</td>
+            <td class="col-type">String</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">e.g. <span class="inline-code">uploadImageNode</span>, <span class="inline-code">runLLMNode</span>, <span class="inline-code">cropImageNode</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">status</td>
+            <td class="col-type">NodeStatus</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note">Enum: <span class="badge badge-zinc">pending</span> <span class="badge badge-yellow">running</span> <span class="badge badge-green">success</span> <span class="badge badge-red">failed</span></td>
+          </tr>
+          <tr>
+            <td class="col-field">input</td>
+            <td class="col-type">Json?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Snapshot of the node's <span class="inline-code">data</span> at the time the run started. Captured client-side from React Flow state.</td>
+          </tr>
+          <tr>
+            <td class="col-field">output</td>
+            <td class="col-type">Json?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Written when the node succeeds. Sourced from <span class="inline-code">run.metadata.nodeOutputs[nodeId]</span> (set by the orchestrator task).</td>
+          </tr>
+          <tr>
+            <td class="col-field">error</td>
+            <td class="col-type">String?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Error message string if the node failed. From <span class="inline-code">run.metadata.nodeErrors[nodeId]</span>.</td>
+          </tr>
+          <tr>
+            <td class="col-field">startedAt</td>
+            <td class="col-type">DateTime</td>
+            <td class="col-req"><span class="dot-req"></span></td>
+            <td class="col-note"><span class="inline-code">@default(now())</span> — set when the <span class="inline-code">NodeRun</span> row is created</td>
+          </tr>
+          <tr>
+            <td class="col-field">completedAt</td>
+            <td class="col-type">DateTime?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Set by <span class="inline-code">PATCH</span> route. From <span class="inline-code">run.metadata.nodeDurations[nodeId]</span>.</td>
+          </tr>
+          <tr>
+            <td class="col-field">durationMs</td>
+            <td class="col-type">Int?</td>
+            <td class="col-req"><span class="dot-opt"></span></td>
+            <td class="col-note">Per-node execution time in ms. Set during the PATCH update.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Enums -->
+    <h3 style="margin-bottom:12px;">Enums</h3>
+    <div class="grid-2">
+      <div class="enum-block">
+        <div class="enum-name">enum RunStatus</div>
+        <div class="enum-values">
+          <span class="enum-val" style="color:var(--yellow);">running</span>
+          <span class="enum-val" style="color:var(--green);">success</span>
+          <span class="enum-val" style="color:var(--red);">failed</span>
+          <span class="enum-val" style="color:var(--orange);">partial</span>
+        </div>
+        <p style="margin-top:10px;font-size:11px;color:var(--muted);">
+          <strong style="color:#a1a1aa">partial</strong> = some nodes succeeded before the run failed
+        </p>
+      </div>
+      <div class="enum-block">
+        <div class="enum-name">enum RunScope</div>
+        <div class="enum-values">
+          <span class="enum-val" style="color:var(--accent2);">full</span>
+          <span class="enum-val">partial</span>
+          <span class="enum-val">single</span>
+        </div>
+        <p style="margin-top:10px;font-size:11px;color:var(--muted);">
+          <strong style="color:#a1a1aa">full</strong> = entire workflow &nbsp;|&nbsp;
+          <strong style="color:#a1a1aa">single</strong> = one node's own button &nbsp;|&nbsp;
+          <strong style="color:#a1a1aa">partial</strong> = selected node group
+        </p>
+      </div>
+      <div class="enum-block">
+        <div class="enum-name">enum NodeStatus</div>
+        <div class="enum-values">
+          <span class="enum-val">pending</span>
+          <span class="enum-val" style="color:var(--yellow);">running</span>
+          <span class="enum-val" style="color:var(--green);">success</span>
+          <span class="enum-val" style="color:var(--red);">failed</span>
+        </div>
+        <p style="margin-top:10px;font-size:11px;color:var(--muted);">
+          <strong style="color:#a1a1aa">pending</strong> = row pre-created, node hasn't started yet
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 3. ORCHESTRATOR METADATA EXTENSION                     -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">03 — Orchestrator Metadata</div>
+    <h2>What the orchestrator must write to metadata</h2>
+    <p style="margin-bottom:20px;">
+      The orchestrator already writes <span class="inline-code">nodeStatuses</span>. It needs three additional maps so the API route can populate <span class="inline-code">NodeRun</span> records completely on completion.
+    </p>
+
+    <pre><span class="cmt">// Inside src/trigger/orchestrator.ts — metadata shape</span>
+<span class="kw">await</span> metadata.<span class="key">set</span>(<span class="str">"nodeStatuses"</span>,  { <span class="str">"nodeId-1"</span>: <span class="str">"success"</span>, <span class="str">"nodeId-2"</span>: <span class="str">"failed"</span> });
+<span class="kw">await</span> metadata.<span class="key">set</span>(<span class="str">"nodeOutputs"</span>,  { <span class="str">"nodeId-1"</span>: { image_url: <span class="str">"..."</span> } });
+<span class="kw">await</span> metadata.<span class="key">set</span>(<span class="str">"nodeErrors"</span>,   { <span class="str">"nodeId-2"</span>: <span class="str">"Connection timeout"</span> });
+<span class="kw">await</span> metadata.<span class="key">set</span>(<span class="str">"nodeDurations"</span>,{ <span class="str">"nodeId-1"</span>: <span class="num">1240</span>, <span class="str">"nodeId-2"</span>: <span class="num">320</span> }); <span class="cmt">// ms</span></pre>
+
+    <div style="margin-top:16px;" class="card">
+      <h3>TypeScript shape</h3>
+      <pre><span class="kw">interface</span> <span class="typ">OrchestratorMetadata</span> {
+  nodeStatuses:   <span class="typ">Record</span>&lt;<span class="typ">string</span>, <span class="str">"pending"</span> | <span class="str">"running"</span> | <span class="str">"success"</span> | <span class="str">"failed"</span>&gt;;
+  nodeOutputs:    <span class="typ">Record</span>&lt;<span class="typ">string</span>, <span class="typ">unknown</span>&gt;;
+  nodeErrors:     <span class="typ">Record</span>&lt;<span class="typ">string</span>, <span class="typ">string</span>&gt;;
+  nodeDurations:  <span class="typ">Record</span>&lt;<span class="typ">string</span>, <span class="typ">number</span>&gt;;
+}</pre>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 4. API ROUTES                                          -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">04 — API Routes</div>
+    <h2>Three new endpoints</h2>
+    <p style="margin-bottom:20px;">All routes live under <span class="inline-code">src/app/api/runs/</span> and use <span class="inline-code">auth()</span> from Clerk for authentication, identical to the existing <span class="inline-code">/api/nodes/run</span> route.</p>
+
+    <!-- POST /api/runs -->
+    <div class="route-card">
+      <div class="route-header">
+        <span class="method method-post">POST</span>
+        <span class="route-path">/api/runs</span>
+        <span class="route-title">Create run record</span>
+      </div>
+      <div class="route-body">
+        <p>Called immediately after Trigger.dev returns <span class="inline-code">{ runId, publicToken }</span>. Creates the <span class="inline-code">Run</span> row and one <span class="inline-code">NodeRun</span> row per node (all in <span class="inline-code">pending</span> status) in a single transaction. Also upserts the <span class="inline-code">Workflow</span> record.</p>
+
+        <div class="grid-2" style="margin-top:14px;gap:14px;">
+          <div>
+            <h3>Request body</h3>
+            <pre>{
+  <span class="key">"triggerRunId"</span>: <span class="str">"run_abc123"</span>,
+  <span class="key">"workflowName"</span>: <span class="str">"My Workflow"</span>,
+  <span class="key">"scope"</span>:        <span class="str">"full"</span>,
+  <span class="key">"nodes"</span>: [
+    { <span class="key">"id"</span>: <span class="str">"uploadImageNode-1"</span>, <span class="key">"type"</span>: <span class="str">"uploadImageNode"</span>, <span class="key">"data"</span>: { ... } },
+    { <span class="key">"id"</span>: <span class="str">"runLLMNode-2"</span>,      <span class="key">"type"</span>: <span class="str">"runLLMNode"</span>,      <span class="key">"data"</span>: { ... } }
+  ],
+  <span class="key">"edges"</span>: [ ... ]
+}</pre>
+          </div>
+          <div>
+            <h3>Response</h3>
+            <pre>{
+  <span class="key">"dbRunId"</span>: <span class="str">"clxyz1234"</span>
+}</pre>
+            <p style="margin-top:12px;font-size:11px;">The <span class="inline-code">dbRunId</span> is stored in React state alongside the Trigger.dev run so the PATCH call knows which DB record to update.</p>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <h3>Prisma operations (in a transaction)</h3>
+          <pre><span class="cmt">// 1. Upsert User (Clerk might be ahead of DB)</span>
+prisma.user.upsert({ where: { id: userId }, ... });
+
+<span class="cmt">// 2. Upsert Workflow by name + userId</span>
+prisma.workflow.upsert({
+  where: { userId_name: { userId, name: workflowName } },
+  update: { nodes, edges, updatedAt: now },
+  create: { id: cuid(), name: workflowName, userId, nodes, edges },
+});
+
+<span class="cmt">// 3. Create Run</span>
+prisma.run.create({
+  data: { workflowId, userId, status: <span class="str">"running"</span>, scope, triggerRunId }
+});
+
+<span class="cmt">// 4. Create one NodeRun per node (createMany)</span>
+prisma.nodeRun.createMany({
+  data: nodes.map(n => ({
+    runId, nodeId: n.id, nodeType: n.type,
+    status: <span class="str">"pending"</span>, input: n.data,
+  }))
+});</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATCH /api/runs/[id] -->
+    <div class="route-card">
+      <div class="route-header">
+        <span class="method method-patch">PATCH</span>
+        <span class="route-path">/api/runs/[id]</span>
+        <span class="route-title">Complete run record</span>
+      </div>
+      <div class="route-body">
+        <p>Called from the <span class="inline-code">useEffect</span> subscription in <span class="inline-code">DashboardShell</span> when <span class="inline-code">run.isCompleted</span> or <span class="inline-code">run.isFailed</span>. Writes final status, duration, and all node-level results.</p>
+
+        <div class="grid-2" style="margin-top:14px;gap:14px;">
+          <div>
+            <h3>Request body</h3>
+            <pre>{
+  <span class="key">"status"</span>:      <span class="str">"success"</span>,
+  <span class="key">"completedAt"</span>: <span class="str">"2026-04-27T10:30:00Z"</span>,
+  <span class="key">"nodeResults"</span>: {
+    <span class="str">"uploadImageNode-1"</span>: {
+      <span class="key">"status"</span>:     <span class="str">"success"</span>,
+      <span class="key">"output"</span>:     { <span class="key">"image_url"</span>: <span class="str">"..."</span> },
+      <span class="key">"durationMs"</span>: <span class="num">1240</span>
+    },
+    <span class="str">"runLLMNode-2"</span>: {
+      <span class="key">"status"</span>:     <span class="str">"failed"</span>,
+      <span class="key">"error"</span>:      <span class="str">"Rate limit exceeded"</span>,
+      <span class="key">"durationMs"</span>: <span class="num">320</span>
+    }
+  }
+}</pre>
+          </div>
+          <div>
+            <h3>Prisma operations</h3>
+            <pre><span class="cmt">// Update the Run row</span>
+prisma.run.update({
+  where: { id: dbRunId },
+  data: { status, completedAt, durationMs }
+});
+
+<span class="cmt">// Update each NodeRun row</span>
+<span class="kw">for</span> (<span class="kw">const</span> [nodeId, result] <span class="kw">of</span>
+     Object.entries(nodeResults)) {
+  prisma.nodeRun.updateMany({
+    where: { runId: dbRunId, nodeId },
+    data: {
+      status:      result.status,
+      output:      result.output,
+      error:       result.error,
+      durationMs:  result.durationMs,
+      completedAt: now,
+    }
+  });
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/runs -->
+    <div class="route-card">
+      <div class="route-header">
+        <span class="method method-get">GET</span>
+        <span class="route-path">/api/runs</span>
+        <span class="route-title">Fetch run history</span>
+      </div>
+      <div class="route-body">
+        <p>Called on sidebar mount and after each run completes. Returns the 20 most recent runs for the current user, with nested node runs.</p>
+
+        <div class="grid-2" style="margin-top:14px;gap:14px;">
+          <div>
+            <h3>Prisma query</h3>
+            <pre>prisma.run.findMany({
+  where:   { userId },
+  orderBy: { startedAt: <span class="str">"desc"</span> },
+  take:    <span class="num">20</span>,
+  include: {
+    nodeRuns: {
+      orderBy: { startedAt: <span class="str">"asc"</span> }
+    },
+    workflow: {
+      select: { name: <span class="kw">true</span> }
+    }
+  }
+});</pre>
+          </div>
+          <div>
+            <h3>Response shape</h3>
+            <pre>[
+  {
+    <span class="key">"id"</span>:          <span class="str">"clxyz1234"</span>,
+    <span class="key">"status"</span>:      <span class="str">"success"</span>,
+    <span class="key">"scope"</span>:       <span class="str">"full"</span>,
+    <span class="key">"startedAt"</span>:   <span class="str">"2026-04-27T10:29:00Z"</span>,
+    <span class="key">"durationMs"</span>:  <span class="num">3480</span>,
+    <span class="key">"workflow"</span>:    { <span class="key">"name"</span>: <span class="str">"My Workflow"</span> },
+    <span class="key">"nodeRuns"</span>: [
+      {
+        <span class="key">"nodeId"</span>:    <span class="str">"uploadImageNode-1"</span>,
+        <span class="key">"nodeType"</span>:  <span class="str">"uploadImageNode"</span>,
+        <span class="key">"status"</span>:    <span class="str">"success"</span>,
+        <span class="key">"durationMs"</span>:<span class="num">1240</span>,
+        <span class="key">"output"</span>:    { ... },
+        <span class="key">"input"</span>:     { ... }
+      }
+    ]
+  }
+]</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 5. INTEGRATION HOOKS                                   -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">05 — Integration Hooks</div>
+    <h2>Where to wire calls into existing code</h2>
+
+    <ul class="step-list">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>DashboardShell — handleRunWorkflow()</h4>
+          <p>After <span class="inline-code">runWorkflowFnRef.current()</span> resolves with <span class="inline-code">{ runId, publicToken }</span>, immediately fire <span class="inline-code">POST /api/runs</span> with the current node/edge list, workflow name, and scope <span class="inline-code">"full"</span>. Store the returned <span class="inline-code">dbRunId</span> in state alongside <span class="inline-code">workflowRun</span>.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>DashboardShell — useEffect (orchestrator subscription)</h4>
+          <p>On <span class="inline-code">run.isCompleted</span> or <span class="inline-code">run.isFailed</span>, read <span class="inline-code">run.metadata</span> (nodeOutputs, nodeErrors, nodeDurations) and call <span class="inline-code">PATCH /api/runs/[dbRunId]</span> with the assembled payload. Then call <span class="inline-code">refreshHistory()</span> to re-fetch the sidebar list.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Individual node handlers (single-node runs)</h4>
+          <p>Each node's <span class="inline-code">handleUpload</span> / <span class="inline-code">handleRun</span> already calls <span class="inline-code">/api/nodes/run</span>. After getting back <span class="inline-code">{ runId, publicToken }</span>, also call <span class="inline-code">POST /api/runs</span> with <span class="inline-code">scope: "single"</span> and a one-item nodes array. The existing <span class="inline-code">RunStatus</span> component already subscribes to completion — hook the PATCH call there too.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>RightBar — history tab</h4>
+          <p>On mount, call <span class="inline-code">GET /api/runs</span> and store results in local state. Expose a <span class="inline-code">refreshHistory</span> callback passed down from <span class="inline-code">DashboardShell</span> so the sidebar re-fetches whenever a run finishes. No polling needed — only refresh on known state transitions.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 6. UI WIREFRAME                                        -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">06 — UI Wireframe</div>
+    <h2>Right Sidebar — History tab</h2>
+    <p style="margin-bottom:20px;">The sidebar gains a tab row. <strong style="color:#d4d4d8">History</strong> is the default. <strong style="color:#d4d4d8">Properties</strong> becomes active only when a node is selected (matches current behaviour).</p>
+
+    <div style="max-width:300px;">
+      <div class="wireframe">
+        <!-- topbar -->
+        <div class="wf-topbar">
+          <span style="color:#52525b;font-size:16px;">≡</span>
+          <span>Workflow History</span>
+        </div>
+
+        <!-- tabs -->
+        <div class="wf-tabs">
+          <div class="wf-tab active">History</div>
+          <div class="wf-tab">Properties</div>
+        </div>
+
+        <!-- content -->
+        <div class="wf-content">
+
+          <!-- Run 1 — success, expanded -->
+          <div class="run-row">
+            <div class="run-row-top">
+              <span class="badge badge-green">success</span>
+              <span class="badge badge-indigo" style="font-size:9px;">full</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);">3.5 s</span>
+            </div>
+            <div class="run-row-meta">My Workflow &nbsp;·&nbsp; 10:29 AM today</div>
+
+            <!-- Expanded node runs -->
+            <div style="margin-top:6px;padding-left:2px;">
+              <div class="node-run-row">
+                <div class="dot dot-g"></div>
+                <span class="node-label">Upload Image</span>
+                <span class="node-time">1.2 s</span>
+              </div>
+              <div class="node-run-row">
+                <div class="dot dot-g"></div>
+                <span class="node-label">Crop Image</span>
+                <span class="node-time">0.9 s</span>
+              </div>
+              <div class="node-run-row">
+                <div class="dot dot-g"></div>
+                <span class="node-label">Run LLM</span>
+                <span class="node-time">1.4 s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Run 2 — failed, collapsed -->
+          <div class="run-row">
+            <div class="run-row-top">
+              <span class="badge badge-orange">partial</span>
+              <span class="badge badge-indigo" style="font-size:9px;">full</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);">1.1 s</span>
+            </div>
+            <div class="run-row-meta">My Workflow &nbsp;·&nbsp; 10:22 AM today</div>
+          </div>
+
+          <!-- Run 3 — single node -->
+          <div class="run-row">
+            <div class="run-row-top">
+              <span class="badge badge-green">success</span>
+              <span class="badge badge-zinc" style="font-size:9px;">single</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);">2.0 s</span>
+            </div>
+            <div class="run-row-meta">Upload Image &nbsp;·&nbsp; 10:18 AM today</div>
+          </div>
+
+          <!-- Run 4 — running -->
+          <div class="run-row" style="border-color:rgba(234,179,8,.3);">
+            <div class="run-row-top">
+              <span class="badge badge-yellow">running</span>
+              <span class="badge badge-indigo" style="font-size:9px;">full</span>
+              <span style="margin-left:auto;font-size:10px;color:var(--muted);">—</span>
+            </div>
+            <div class="run-row-meta">My Workflow &nbsp;·&nbsp; just now</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Node detail pop -->
+      <div style="margin-top:12px;" class="card-sm">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Node detail (on click)</div>
+        <div style="font-size:11px;color:#d4d4d8;margin-bottom:4px;font-weight:600;">Upload Image — success</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">1 240 ms</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Input</div>
+        <pre style="font-size:10px;padding:8px;margin-bottom:8px;">{ <span class="key">"fileName"</span>: <span class="str">"photo.jpg"</span> }</pre>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Output</div>
+        <pre style="font-size:10px;padding:8px;">{ <span class="key">"image_url"</span>: <span class="str">"https://..."</span> }</pre>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- 7. FILE MAP                                            -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-label">07 — Files to Create / Modify</div>
+    <h2>Exact file map</h2>
+    <p style="margin-bottom:20px;"></p>
+
+    <div class="card">
+      <table style="font-family:monospace;">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>File</th>
+            <th>What changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-indigo">CREATE</span></td>
+            <td class="col-type" style="font-size:11px;">src/app/api/runs/route.ts</td>
+            <td class="col-note">POST (create) + GET (list) handlers</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-indigo">CREATE</span></td>
+            <td class="col-type" style="font-size:11px;">src/app/api/runs/[id]/route.ts</td>
+            <td class="col-note">PATCH handler — update run + node results</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">MODIFY</span></td>
+            <td class="col-type" style="font-size:11px;">src/trigger/orchestrator.ts</td>
+            <td class="col-note">Add nodeOutputs, nodeErrors, nodeDurations to metadata.set calls</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">MODIFY</span></td>
+            <td class="col-type" style="font-size:11px;">src/app/dashboard/_components/DashboardShell.tsx</td>
+            <td class="col-note">Call POST /api/runs after trigger fires; call PATCH on completion; pass refreshHistory to RightBar</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">MODIFY</span></td>
+            <td class="col-type" style="font-size:11px;">src/app/dashboard/_components/RightBar.tsx</td>
+            <td class="col-note">Replace Properties-only panel with tabbed History + Properties panel</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">MODIFY</span></td>
+            <td class="col-type" style="font-size:11px;">prisma/schema.prisma</td>
+            <td class="col-note">Add triggerRunId field to Run model; add @@unique([userId, name]) to Workflow for upsert</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-zinc">OPTIONAL</span></td>
+            <td class="col-type" style="font-size:11px;">src/app/dashboard/_components/nodes/RunStatus.tsx</td>
+            <td class="col-note">Hook PATCH call here for single-node run completion (scope: "single")</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="section-rule" />
+
+  <!-- ── Footer ── -->
+  <footer style="text-align:center;color:var(--muted);font-size:11px;padding-top:12px;">
+    NextFlow &nbsp;·&nbsp; Workflow History System &nbsp;·&nbsp; Architecture Reference &nbsp;·&nbsp; 2026-04-27
+  </footer>
+
+</div>
+</body>
+</html>

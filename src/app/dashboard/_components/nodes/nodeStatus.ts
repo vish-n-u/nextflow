@@ -27,7 +27,7 @@ export function useStatusGlow(nodeId: string, status: string): void {
     if (status !== NodeStatus.Success && status !== NodeStatus.Error) return;
     const timer = setTimeout(() => {
       updateNodeData(nodeId, { status: NodeStatus.Idle });
-    }, 5000);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [status, nodeId, updateNodeData]);
 }

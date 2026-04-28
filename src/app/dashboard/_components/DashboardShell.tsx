@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Node } from "@xyflow/react";
+import type { Node, Edge } from "@xyflow/react";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { TopBar }      from "./TopBar";
 import { LeftBar }     from "./LeftBar";
@@ -25,27 +25,94 @@ export function DashboardShell() {
   console.log("DashboardShell rendered", { workflowName, selectedNode, nodeToAdd });
 
   // ── Orchestrator / workflow-level run ──────────────────────────────────────
-  const runWorkflowFnRef = useRef<(() => Promise<{ runId: string; publicToken: string }>) | null>(null);
+  const runWorkflowFnRef = useRef<
+    (() => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) | null
+  >(null);
+  const getSnapshotFnRef = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
+
   const handleRegisterRunWorkflow = useCallback(
-    (fn: () => Promise<{ runId: string; publicToken: string }>) => { runWorkflowFnRef.current = fn; },
+    (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => {
+      runWorkflowFnRef.current = fn;
+    },
+    [],
+  );
+
+  const handleRegisterGetSnapshot = useCallback(
+    (fn: () => { nodes: Node[]; edges: Edge[] }) => { getSnapshotFnRef.current = fn; },
     [],
   );
 
   const [workflowStatus, setWorkflowStatus] = useState<"idle" | "running" | "success" | "error">("idle");
-  const [workflowRun, setWorkflowRun] = useState<{ runId: string; publicToken: string } | null>(null);
+  const [workflowRun,    setWorkflowRun]    = useState<{ runId: string; publicToken: string } | null>(null);
+  const [historyKey,     setHistoryKey]     = useState(0);
+  const [saveStatus,     setSaveStatus]     = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const savedWorkflowIdRef = useRef<string | null>(null);
+  const dbRunIdRef         = useRef<string | null>(null);
+
+  const handleSave = useCallback(async () => {
+    if (!getSnapshotFnRef.current || saveStatus === "saving") return;
+    setSaveStatus("saving");
+    const { nodes, edges } = getSnapshotFnRef.current();
+    try {
+      const res = await fetch("/api/workflows", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflowId: savedWorkflowIdRef.current ?? undefined,
+          name:       workflowName || "Untitled",
+          nodes: nodes.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          edges: edges.map((e) => ({
+            source:       e.source,
+            target:       e.target,
+            targetHandle: e.targetHandle ?? "",
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const { id } = await res.json() as { id: string };
+      savedWorkflowIdRef.current = id;
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [saveStatus, workflowName]);
 
   const handleRunWorkflow = useCallback(async () => {
     if (!runWorkflowFnRef.current || workflowStatus === "running") return;
     setWorkflowStatus("running");
     try {
       const result = await runWorkflowFnRef.current();
-      setWorkflowRun(result);
+      setWorkflowRun({ runId: result.runId, publicToken: result.publicToken });
+
+      // Persist the run to the DB (fire and store the returned id)
+      const dbRes = await fetch("/api/runs", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          triggerRunId: result.runId,
+          workflowName: workflowName || "Untitled",
+          scope:        "full",
+          nodes: result.nodes.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          edges: result.edges.map((e) => ({
+            source:       e.source,
+            target:       e.target,
+            targetHandle: e.targetHandle ?? "",
+          })),
+        }),
+      });
+      if (dbRes.ok) {
+        const { id } = await dbRes.json() as { id: string };
+        dbRunIdRef.current = id;
+        setHistoryKey((k) => k + 1);
+      }
     } catch {
       setWorkflowStatus("error");
     }
-  }, [workflowStatus]);
+  }, [workflowStatus, workflowName]);
 
-  // Subscribe to the orchestrator run and update top-level status
+  // Subscribe to the orchestrator run, update top-level status, and persist completion
   useEffect(() => {
     if (!workflowRun) return;
     const { runId, publicToken } = workflowRun;
@@ -54,16 +121,57 @@ export function DashboardShell() {
     void auth.withAuth({ accessToken: publicToken }, async () => {
       for await (const run of runs.subscribeToRun(runId)) {
         if (!mounted) break;
-        if (run.isCompleted) {
-          setWorkflowStatus("success");
-          setWorkflowRun(null);
-          break;
+
+        const isTerminal = run.isCompleted || run.isFailed;
+        if (!isTerminal) continue;
+
+        const nodeStatuses  = run.metadata?.nodeStatuses  as Record<string, string>  | undefined ?? {};
+        const nodeOutputs   = run.metadata?.nodeOutputs   as Record<string, unknown> | undefined ?? {};
+        const nodeErrors    = run.metadata?.nodeErrors    as Record<string, string>  | undefined ?? {};
+        const nodeDurations = run.metadata?.nodeDurations as Record<string, number>  | undefined ?? {};
+
+        const hasFailures  = Object.values(nodeStatuses).some((s) => s === "error");
+        const hasSuccesses = Object.values(nodeStatuses).some((s) => s === "success");
+        const finalStatus  = run.isFailed
+          ? (hasSuccesses ? "partial" : "failed")
+          : "success";
+
+        const nodeResults: Record<string, {
+          status: "pending" | "running" | "success" | "failed";
+          output?: unknown;
+          error?:  string;
+          durationMs?: number;
+        }> = {};
+        for (const nodeId of Object.keys(nodeStatuses)) {
+          const raw = nodeStatuses[nodeId];
+          nodeResults[nodeId] = {
+            status:     raw === "error" ? "failed" : (raw as "pending" | "running" | "success" | "failed"),
+            output:     nodeOutputs[nodeId],
+            error:      nodeErrors[nodeId],
+            durationMs: nodeDurations[nodeId],
+          };
         }
-        if (run.isFailed) {
-          setWorkflowStatus("error");
-          setWorkflowRun(null);
-          break;
+
+        if (run.isCompleted) setWorkflowStatus("success");
+        if (run.isFailed)    setWorkflowStatus("error");
+        setWorkflowRun(null);
+
+        if (dbRunIdRef.current) {
+          void fetch(`/api/runs/${dbRunIdRef.current}`, {
+            method:  "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status:      finalStatus,
+              completedAt: new Date().toISOString(),
+              nodeResults,
+            }),
+          }).then(() => {
+            dbRunIdRef.current = null;
+            setHistoryKey((k) => k + 1);
+          });
         }
+
+        break;
       }
     });
 
@@ -77,6 +185,8 @@ export function DashboardShell() {
         onWorkflowNameChange={setWorkflowName}
         workflowStatus={workflowStatus}
         onRunWorkflow={handleRunWorkflow}
+        saveStatus={saveStatus}
+        onSave={handleSave}
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
       />
@@ -91,12 +201,14 @@ export function DashboardShell() {
           onNodeAdded={handleNodeAdded}
           onNodeSelect={setSelectedNode}
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
+          onRegisterGetSnapshot={handleRegisterGetSnapshot}
           workflowRun={workflowRun}
         />
         <RightBar
           selectedNode={selectedNode}
           isOpen={rightBarOpen}
           onClose={() => setRightBarOpen(false)}
+          historyKey={historyKey}
         />
       </div>
     </div>

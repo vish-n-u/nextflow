@@ -1,18 +1,20 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { Layers, Play, PanelLeft, PanelRight } from "lucide-react";
+import { Layers, Play, PanelLeft, PanelRight, Save, Check, Loader2 } from "lucide-react";
 
 interface TopBarProps {
   workflowName: string;
   onWorkflowNameChange: (name: string) => void;
   workflowStatus: "idle" | "running" | "success" | "error";
   onRunWorkflow: () => void;
+  saveStatus: "idle" | "saving" | "saved" | "error";
+  onSave: () => void;
   onToggleLeftBar: () => void;
   onToggleRightBar: () => void;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, onToggleLeftBar, onToggleRightBar }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onToggleLeftBar, onToggleRightBar }: TopBarProps) {
   const btnLabel =
     workflowStatus === "running" ? "Running…" :
     workflowStatus === "success" ? "Done"      :
@@ -47,6 +49,32 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
       />
 
       <div className="flex items-center gap-2 shrink-0">
+        {/* Save button */}
+        <button
+          onClick={onSave}
+          disabled={saveStatus === "saving"}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+            saveStatus === "saved"
+              ? "bg-green-500/15 text-green-400 border-green-500/30"
+              : saveStatus === "error"
+              ? "bg-red-500/15 text-red-400 border-red-500/30"
+              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100"
+          }`}
+        >
+          {saveStatus === "saving" && <Loader2 className="w-3 h-3 animate-spin" />}
+          {saveStatus === "saved"  && <Check   className="w-3 h-3" />}
+          {saveStatus === "idle" || saveStatus === "error"
+            ? <Save className="w-3 h-3" />
+            : null}
+          <span className="hidden sm:inline">
+            {saveStatus === "saving" ? "Saving…"
+              : saveStatus === "saved" ? "Saved"
+              : saveStatus === "error" ? "Failed"
+              : "Save"}
+          </span>
+        </button>
+
+        {/* Run button */}
         <button
           onClick={onRunWorkflow}
           disabled={workflowStatus === "running"}

@@ -88,17 +88,17 @@ export const orchestratorTask = task({
   maxDuration: 600,
   run: async (payload: { nodes: FlowNode[]; edges: FlowEdge[] }) => {
     const { nodes, edges } = payload;
-    const levels      = buildLevels(nodes, edges);
-    const nodeOutputs:  Record<string, unknown>    = {};
-    const nodeStatuses: Record<string, NodeStatus> = {};
+    const levels       = buildLevels(nodes, edges);
+    const nodeOutputs:   Record<string, unknown>    = {};
+    const nodeStatuses:  Record<string, NodeStatus> = {};
+    const nodeErrors:    Record<string, string>     = {};
+    const nodeDurations: Record<string, number>     = {};
 
     for (const level of levels) {
-      // Mark every node in this level as running in one flush
       for (const node of level) nodeStatuses[node.id] = "running";
       metadata.set("nodeStatuses", { ...nodeStatuses });
       await metadata.flush();
 
-      // Build payloads — resolve upstream inputs for each node in this level
       const levelPayloads = level.map((node) => {
         const inputs: Record<string, unknown> = {};
         for (const edge of edges.filter((e) => e.target === node.id)) {
@@ -120,24 +120,29 @@ export const orchestratorTask = task({
         };
       });
 
-      // Run all nodes in this level in parallel via batchTriggerAndWait
-      const results = await nodeRunnerTask.batchTriggerAndWait(levelPayloads);
+      const levelStart = Date.now();
+      const results    = await nodeRunnerTask.batchTriggerAndWait(levelPayloads);
+      const levelMs    = Date.now() - levelStart;
 
-      // Collect outputs and update statuses
       let levelFailed = false;
       for (let i = 0; i < results.runs.length; i++) {
         const run  = results.runs[i];
         const node = level[i];
+        nodeDurations[node.id] = levelMs;
         if (run.ok) {
-          nodeOutputs[node.id]   = run.output.output;
-          nodeStatuses[node.id]  = "success";
+          nodeOutputs[node.id]  = run.output.output;
+          nodeStatuses[node.id] = "success";
         } else {
           nodeStatuses[node.id] = "error";
-          levelFailed = true;
+          nodeErrors[node.id]   = run.error ? String(run.error) : "Node failed";
+          levelFailed           = true;
         }
       }
 
-      metadata.set("nodeStatuses", { ...nodeStatuses });
+      metadata.set("nodeStatuses",  { ...nodeStatuses });
+      metadata.set("nodeOutputs",   { ...nodeOutputs });
+      metadata.set("nodeErrors",    { ...nodeErrors });
+      metadata.set("nodeDurations", { ...nodeDurations });
       await metadata.flush();
 
       if (levelFailed) throw new Error("One or more nodes in this level failed");

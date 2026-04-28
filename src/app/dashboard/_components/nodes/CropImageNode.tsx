@@ -7,6 +7,7 @@ import {
 import { Scissors, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
+import { trackSingleRun } from "./trackSingleRun";
 
 type CropImageNodeType = Node<{
   x_percent?:      number;
@@ -18,6 +19,7 @@ type CropImageNodeType = Node<{
   errorMessage?:   string | null;
   runId?:          string | null;
   publicToken?:    string | null;
+  dbRunId?:        string | null;
 }>;
 
 const TGT = "!w-3 !h-3 !bg-zinc-700 !border-2 !border-zinc-900 hover:!bg-zinc-400 !rounded-full transition-colors";
@@ -84,6 +86,19 @@ export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeTyp
       }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
+      trackSingleRun({
+        triggerRunId: runId,
+        nodeId:       id,
+        nodeType:     "cropImageNode",
+        displayName:  "Crop Image",
+        data: {
+          x_percent:      data.x_percent      ?? 0,
+          y_percent:      data.y_percent      ?? 0,
+          width_percent:  data.width_percent  ?? 100,
+          height_percent: data.height_percent ?? 100,
+        },
+        onDbRunId: (dbRunId) => updateNodeData(id, { dbRunId }),
+      });
     } catch (err) {
       updateNodeData(id, {
         status: NodeStatus.Error,
@@ -99,7 +114,7 @@ export function CropImageNode({ id, data, selected }: NodeProps<CropImageNodeTyp
   return (
     <div className={`bg-zinc-900 rounded-xl shadow-xl min-w-[260px] border transition-all ${border}`}>
       {data.runId && data.publicToken && (
-        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} />
+        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} dbRunId={data.dbRunId} />
       )}
 
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 rounded-t-xl">

@@ -7,6 +7,7 @@ import {
 import { Film, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
+import { trackSingleRun } from "./trackSingleRun";
 
 type ExtractFrameNodeType = Node<{
   timestamp?:    string;
@@ -15,6 +16,7 @@ type ExtractFrameNodeType = Node<{
   errorMessage?: string | null;
   runId?:        string | null;
   publicToken?:  string | null;
+  dbRunId?:      string | null;
 }>;
 
 const TGT = "!w-3 !h-3 !bg-zinc-700 !border-2 !border-zinc-900 hover:!bg-zinc-400 !rounded-full transition-colors";
@@ -53,6 +55,14 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
       }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
+      trackSingleRun({
+        triggerRunId: runId,
+        nodeId:       id,
+        nodeType:     "extractFrameNode",
+        displayName:  "Extract Frame",
+        data:         { timestamp: data.timestamp },
+        onDbRunId:    (dbRunId) => updateNodeData(id, { dbRunId }),
+      });
     } catch (err) {
       updateNodeData(id, {
         status: NodeStatus.Error,
@@ -68,7 +78,7 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
   return (
     <div className={`bg-zinc-900 rounded-xl shadow-xl min-w-[260px] border transition-all ${border}`}>
       {data.runId && data.publicToken && (
-        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} />
+        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} dbRunId={data.dbRunId} />
       )}
 
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 rounded-t-xl">

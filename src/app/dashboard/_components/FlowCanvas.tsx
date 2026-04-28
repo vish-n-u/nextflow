@@ -40,11 +40,12 @@ interface FlowCanvasInnerProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
-  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
+  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
+  onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   workflowRun: { runId: string; publicToken: string } | null;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, workflowRun }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, workflowRun }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition, getNode, updateNodeData } = useReactFlow();
@@ -151,7 +152,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   );
 
   // ── Workflow run ─────────────────────────────────────────────────────────────
-  const runWorkflow = useCallback(async (): Promise<{ runId: string; publicToken: string }> => {
+  const runWorkflow = useCallback(async (): Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }> => {
     const res = await fetch("/api/nodes/run", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -159,17 +160,27 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         nodeType: "orchestrator",
         data: {
           nodes: nodesRef.current.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
-          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? ""  })),
+          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? "" })),
         },
       }),
     });
     if (!res.ok) throw new Error("Failed to start workflow");
-    return res.json() as Promise<{ runId: string; publicToken: string }>;
+    const result = await res.json() as { runId: string; publicToken: string };
+    return { ...result, nodes: nodesRef.current, edges: edgesRef.current };
   }, []);
 
   useEffect(() => {
     onRegisterRunWorkflow(runWorkflow);
   }, [runWorkflow, onRegisterRunWorkflow]);
+
+  const getSnapshot = useCallback(
+    () => ({ nodes: nodesRef.current, edges: edgesRef.current }),
+    [],
+  );
+
+  useEffect(() => {
+    onRegisterGetSnapshot(getSnapshot);
+  }, [getSnapshot, onRegisterGetSnapshot]);
 
   // ── Workflow node-status glows ───────────────────────────────────────────────
   useEffect(() => {
@@ -260,7 +271,8 @@ interface FlowCanvasProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
-  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string }>) => void;
+  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
+  onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   workflowRun: { runId: string; publicToken: string } | null;
 }
 

@@ -5,6 +5,7 @@ import { Handle, Position, useReactFlow, type NodeProps, type Node } from "@xyfl
 import { Video, Upload, X, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
+import { trackSingleRun } from "./trackSingleRun";
 
 type UploadVideoNodeType = Node<{
   previewUrl?:    string;
@@ -15,6 +16,7 @@ type UploadVideoNodeType = Node<{
   errorMessage?:  string | null;
   runId?:         string | null;
   publicToken?:   string | null;
+  dbRunId?:       string | null;
 }>;
 
 const SRC = "!w-3 !h-3 !bg-zinc-600 !border-2 !border-zinc-900 hover:!bg-white !rounded-full transition-colors";
@@ -64,6 +66,14 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
       }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
+      trackSingleRun({
+        triggerRunId: runId,
+        nodeId:       id,
+        nodeType:     "uploadVideoNode",
+        displayName:  "Upload Video",
+        data:         { fileName: data.fileName },
+        onDbRunId:    (dbRunId) => updateNodeData(id, { dbRunId }),
+      });
     } catch (err) {
       updateNodeData(id, {
         status: NodeStatus.Error,
@@ -79,7 +89,7 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
   return (
     <div className={`bg-zinc-900 rounded-xl shadow-xl min-w-[240px] border transition-all ${border}`}>
       {data.runId && data.publicToken && (
-        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} />
+        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} dbRunId={data.dbRunId} />
       )}
 
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 rounded-t-xl">

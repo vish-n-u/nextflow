@@ -8,6 +8,7 @@ import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { RunStatus } from "./RunStatus";
 import { NodeStatus, STATUS_BORDER, useStatusGlow } from "./nodeStatus";
 import { LLM_MODEL_NAMES, DEFAULT_LLM_MODEL, type LLMModelName } from "@/lib/models";
+import { trackSingleRun } from "./trackSingleRun";
 
 type RunLLMNodeType = Node<{
   model?:         LLMModelName;
@@ -18,6 +19,7 @@ type RunLLMNodeType = Node<{
   errorMessage?:  string | null;
   runId?:         string | null;
   publicToken?:   string | null;
+  dbRunId?:       string | null;
 }>;
 
 
@@ -63,6 +65,18 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
       }
       const { runId, publicToken } = await res.json() as { runId: string; publicToken: string };
       updateNodeData(id, { runId, publicToken });
+      trackSingleRun({
+        triggerRunId: runId,
+        nodeId:       id,
+        nodeType:     "runLLMNode",
+        displayName:  "Run LLM",
+        data: {
+          model:         data.model ?? DEFAULT_LLM_MODEL,
+          system_prompt: data.system_prompt,
+          user_message:  data.user_message,
+        },
+        onDbRunId: (dbRunId) => updateNodeData(id, { dbRunId }),
+      });
     } catch (err) {
       updateNodeData(id, {
         status: NodeStatus.Error,
@@ -77,9 +91,9 @@ export function RunLLMNode({ id, data, selected }: NodeProps<RunLLMNodeType>) {
     : null;
 
   return (
-    <div className={`bg-zinc-900 rounded-xl shadow-xl min-w-[280px] border transition-all ${border}`}>
+    <div className={`bg-zinc-900 rounded-xl shadow-xl w-[280px] border transition-all ${border}`}>
       {data.runId && data.publicToken && (
-        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} />
+        <RunStatus nodeId={id} runId={data.runId} publicToken={data.publicToken} dbRunId={data.dbRunId} />
       )}
 
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-950/80 rounded-t-xl">
