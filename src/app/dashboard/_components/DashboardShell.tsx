@@ -8,7 +8,9 @@ import { LeftBar }          from "./LeftBar";
 import { FlowCanvas }       from "./FlowCanvas";
 import { RightBar }         from "./RightBar";
 import { WorkflowsModal }   from "./WorkflowsModal";
-import { getNodeMeta }      from "@/lib/nodeRegistry";
+import { getNodeMeta }        from "@/lib/nodeRegistry";
+import { useRunsStore }       from "@/lib/stores/runsStore";
+import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
 export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
@@ -50,8 +52,9 @@ export function DashboardShell() {
 
   const [workflowStatus,   setWorkflowStatus]   = useState<"idle" | "running" | "success" | "error">("idle");
   const [workflowRun,      setWorkflowRun]      = useState<{ runId: string; publicToken: string } | null>(null);
-  const [historyKey,       setHistoryKey]       = useState(0);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const invalidateRuns      = useRunsStore((s) => s.invalidate);
+  const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
   const [openModalVisible, setOpenModalVisible] = useState(false);
   const [runError,         setRunError]         = useState<string | null>(null);
   const STORAGE_KEY = "nextflow:activeWorkflowId";
@@ -115,6 +118,7 @@ export function DashboardShell() {
       const { id } = await res.json() as { id: string };
       setActiveWorkflowId(id);
       setSaveStatus("saved");
+      invalidateWorkflows();
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
       setSaveStatus("error");
@@ -183,7 +187,7 @@ export function DashboardShell() {
       if (dbRes.ok) {
         const { id } = await dbRes.json() as { id: string };
         dbRunIdRef.current = id;
-        setHistoryKey((k) => k + 1);
+        invalidateRuns();
       }
     } catch {
       setWorkflowStatus("error");
@@ -245,7 +249,7 @@ export function DashboardShell() {
             }),
           });
           dbRunIdRef.current = null;
-          setHistoryKey((k) => k + 1);
+          invalidateRuns();
         }
 
         break;
@@ -290,7 +294,6 @@ export function DashboardShell() {
           selectedNode={selectedNode}
           isOpen={rightBarOpen}
           onClose={() => setRightBarOpen(false)}
-          historyKey={historyKey}
         />
       </div>
     </div>

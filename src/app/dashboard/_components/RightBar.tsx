@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { MousePointerClick, History, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
-
-const PAGE = 5;
 import type { Node } from "@xyflow/react";
-import type { RunResponse, NodeRunResponse } from "@/lib/api/runs";
+import type { NodeRunResponse } from "@/lib/api/runs";
+import { useRunsStore } from "@/lib/stores/runsStore";
 
 // ── Display helpers ───────────────────────────────────────────────────────────
 
@@ -152,53 +151,21 @@ function RunRow({ run }: { run: RunResponse }) {
 
 // ── History tab ───────────────────────────────────────────────────────────────
 
-function HistoryTab({ historyKey }: { historyKey: number }) {
-  const [runs,        setRuns]        = useState<RunResponse[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore,     setHasMore]     = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [localKey,    setLocalKey]    = useState(0);
-  const offsetRef = useRef(0);
+function HistoryTab() {
+  const { runs, hasMore, loading, loadingMore, error, stale, fetch, fetchMore, invalidate } = useRunsStore();
 
-  // Single-node runs dispatch this event from RunStatus after PATCH completes
+  // Fetch on mount (no-ops if already loaded and not stale)
+  useEffect(() => { void fetch(); }, [fetch]);
+
+  // Re-fetch if invalidated while this tab is mounted
+  useEffect(() => { if (stale) void fetch(); }, [stale, fetch]);
+
+  // Single-node runs dispatch this event — invalidate so the list refreshes
   useEffect(() => {
-    const handler = () => setLocalKey((k) => k + 1);
+    const handler = () => invalidate();
     window.addEventListener("nextflow:run-complete", handler);
     return () => window.removeEventListener("nextflow:run-complete", handler);
-  }, []);
-
-  const fetchPage = async (offset: number, append: boolean) => {
-    const res = await fetch(`/api/runs?limit=${PAGE}&offset=${offset}`);
-    if (!res.ok) throw new Error("Failed to load history");
-    const data = await res.json() as RunResponse[];
-    setRuns((prev) => append ? [...prev, ...data] : data);
-    setHasMore(data.length === PAGE);
-    offsetRef.current = offset + data.length;
-  };
-
-  // Reload from page 0 whenever historyKey or localKey changes (new run completed)
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    offsetRef.current = 0;
-
-    void fetchPage(0, false)
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load history");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [historyKey, localKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleLoadMore = async () => {
-    setLoadingMore(true);
-    try { await fetchPage(offsetRef.current, true); }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to load history"); }
-    finally { setLoadingMore(false); }
-  };
+  }, [invalidate]);
 
   if (loading) {
     return (
@@ -234,7 +201,7 @@ function HistoryTab({ historyKey }: { historyKey: number }) {
       ))}
       {hasMore && (
         <button
-          onClick={handleLoadMore}
+          onClick={() => void fetchMore()}
           disabled={loadingMore}
           className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
         >
@@ -315,10 +282,9 @@ interface RightBarProps {
   selectedNode: Node | null;
   isOpen?:      boolean;
   onClose?:     () => void;
-  historyKey:   number;
 }
 
-export function RightBar({ selectedNode, isOpen = true, onClose, historyKey }: RightBarProps) {
+export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps) {
   const [tab, setTab] = useState<Tab>("history");
 
   // Auto-switch to Properties when a node is selected
@@ -378,7 +344,7 @@ export function RightBar({ selectedNode, isOpen = true, onClose, historyKey }: R
         {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-3">
           {tab === "history"
-            ? <HistoryTab historyKey={historyKey} />
+            ? <HistoryTab />
             : <PropertiesTab selectedNode={selectedNode} />}
         </div>
       </aside>

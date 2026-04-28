@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { FolderOpen, RefreshCw, X, Clock, Box } from "lucide-react";
-import type { WorkflowSummary } from "@/lib/api/workflows";
-
-const PAGE = 5;
+import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
 
 interface WorkflowDetail {
   id:    string;
@@ -28,35 +26,11 @@ function formatUpdatedAt(iso: string): string {
 }
 
 export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
-  const [workflows,   setWorkflows]   = useState<WorkflowSummary[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore,     setHasMore]     = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [loadingId,   setLoadingId]   = useState<string | null>(null);
-  const offsetRef = useRef(0);
+  const { workflows, hasMore, loading, loadingMore, error, fetch, fetchMore } = useWorkflowsStore();
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const fetchPage = async (offset: number, append: boolean) => {
-    const res = await fetch(`/api/workflows?limit=${PAGE}&offset=${offset}`);
-    if (!res.ok) throw new Error("Failed to load workflows");
-    const data = await res.json() as WorkflowSummary[];
-    setWorkflows((prev) => append ? [...prev, ...data] : data);
-    setHasMore(data.length === PAGE);
-    offsetRef.current = offset + data.length;
-  };
-
-  useEffect(() => {
-    void fetchPage(0, false)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load workflows"))
-      .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleLoadMore = async () => {
-    setLoadingMore(true);
-    try { await fetchPage(offsetRef.current, true); }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to load workflows"); }
-    finally { setLoadingMore(false); }
-  };
+  // Fetch on open — no-ops if already loaded and not stale
+  useEffect(() => { void fetch(); }, [fetch]);
 
   const handleSelect = async (id: string) => {
     setLoadingId(id);
@@ -153,7 +127,7 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
 
                 {hasMore && (
                   <button
-                    onClick={handleLoadMore}
+                    onClick={() => void fetchMore()}
                     disabled={loadingMore}
                     className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
                   >
