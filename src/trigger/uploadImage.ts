@@ -21,6 +21,9 @@ export const uploadImageTask = task({
     logger.log("Starting image upload to Transloadit", { fileName });
 
     const options: Transloadit.AssemblyOptions = {
+      // Wait for all assembly steps to finish before returning,
+      // so assembly.results is populated when we read it below.
+      waitForCompletion: true,
       params: {
         steps: {
           ":original": {
@@ -44,7 +47,7 @@ export const uploadImageTask = task({
     if (assembly.error) {
       throw new Error(`Transloadit error: ${assembly.error} — ${assembly.message}`);
     }
-
+    console.log("Transloadit assembly completed",JSON.stringify(assembly));
     const uploaded = assembly.results?.[":original"]?.[0];
 
     if (!uploaded?.ssl_url) {

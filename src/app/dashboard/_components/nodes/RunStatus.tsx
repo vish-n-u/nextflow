@@ -28,51 +28,76 @@ export function RunStatus({ nodeId, runId, publicToken, dbRunId }: RunStatusProp
   useEffect(() => {
     let mounted = true;
 
-    void auth.withAuth({ accessToken: publicToken }, async () => {
-      for await (const run of runs.subscribeToRun(runId)) {
-        if (!mounted) break;
+    // Terminal error states beyond isFailed (CRASHED, TIMED_OUT, CANCELED, etc.)
+    const ERROR_STATUSES = new Set([
+      "FAILED", "CRASHED", "TIMED_OUT", "CANCELED",
+      "INTERRUPTED", "SYSTEM_FAILURE", "EXPIRED",
+    ]);
 
-        const isCompleted = run.isCompleted;
-        const isFailed    = run.isFailed;
-        if (!isCompleted && !isFailed) continue;
+    const run = async () => {
+      try {
+        await auth.withAuth({ accessToken: publicToken }, async () => {
+          for await (const r of runs.subscribeToRun(runId)) {
+            if (!mounted) break;
 
-        if (isCompleted) {
-          updateNodeData(nodeId, {
-            output:      run.output,
-            status:      NodeStatus.Success,
-            runId:       null,
-            publicToken: null,
-          });
-        } else {
-          updateNodeData(nodeId, {
-            status:      NodeStatus.Error,
-            runId:       null,
-            publicToken: null,
-          });
-        }
+            const isSuccess  = r.isCompleted;
+            // Treat any known terminal error state as failed
+            const isError    = r.isFailed || ERROR_STATUSES.has(r.status?.toUpperCase?.() ?? "");
+            if (!isSuccess && !isError) continue;
 
-        const currentDbRunId = dbRunIdRef.current;
-        if (currentDbRunId) {
-          await fetch(`/api/runs/${currentDbRunId}`, {
-            method:  "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              status:      isCompleted ? "success" : "failed",
-              completedAt: new Date().toISOString(),
-              nodeResults: {
-                [nodeId]: {
-                  status: isCompleted ? "success" : "failed",
-                  output: isCompleted ? (run.output as object | undefined) : undefined,
-                },
-              },
-            }),
-          });
-          window.dispatchEvent(new CustomEvent("nextflow:run-complete"));
-        }
+            if (isSuccess) {
+              updateNodeData(nodeId, {
+                output:      r.output,
+                status:      NodeStatus.Success,
+                runId:       null,
+                publicToken: null,
+              });
+            } else {
+              updateNodeData(nodeId, {
+                status:       NodeStatus.Error,
+                errorMessage: `Task ${r.status ?? "failed"} — check Trigger.dev dashboard for details.`,
+                runId:        null,
+                publicToken:  null,
+              });
+            }
 
-        break;
+            const currentDbRunId = dbRunIdRef.current;
+            if (currentDbRunId) {
+              void fetch(`/api/runs/${currentDbRunId}`, {
+                method:  "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  status:      isSuccess ? "success" : "failed",
+                  completedAt: new Date().toISOString(),
+                  nodeResults: {
+                    [nodeId]: {
+                      status: isSuccess ? "success" : "failed",
+                      output: isSuccess ? (r.output as object | undefined) : undefined,
+                    },
+                  },
+                }),
+              }).then(() => {
+                window.dispatchEvent(new CustomEvent("nextflow:run-complete"));
+              });
+            }
+
+            break;
+          }
+        });
+      } catch (err) {
+        // Subscription itself threw (expired token, network failure, etc.)
+        // Surface this as a node error so the UI never stays stuck in "Running"
+        if (!mounted) return;
+        updateNodeData(nodeId, {
+          status:       NodeStatus.Error,
+          errorMessage: err instanceof Error ? err.message : "Lost connection to task runner.",
+          runId:        null,
+          publicToken:  null,
+        });
       }
-    });
+    };
+
+    void run();
 
     return () => { mounted = false; };
   }, [runId, publicToken, nodeId, updateNodeData]);

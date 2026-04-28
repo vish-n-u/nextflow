@@ -10,7 +10,7 @@ export const runLLMTask = task({
     model: LLMModelName;
     user_message: string;
     system_prompt?: string;
-    images?: string[]; // base64-encoded images
+    images?: string[]; // image URLs from upstream nodes (Transloadit CDN, etc.)
   }) => {
     const { model, user_message, system_prompt, images = [] } = payload;
 
@@ -23,12 +23,15 @@ export const runLLMTask = task({
 
     const parts: Part[] = [{ text: user_message }];
 
-    for (const imageBase64 of images) {
+    for (const imageUrl of images) {
+      // Fetch the image from the URL and convert to base64 for Gemini inlineData
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error(`Failed to fetch image: ${imageUrl} (${response.status})`);
+      const buffer   = await response.arrayBuffer();
+      const base64   = Buffer.from(buffer).toString("base64");
+      const mimeType = response.headers.get("content-type") ?? "image/jpeg";
       parts.push({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: imageBase64,
-        },
+        inlineData: { mimeType, data: base64 },
       });
     }
 
