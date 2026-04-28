@@ -12,6 +12,8 @@ import { getNodeMeta }        from "@/lib/nodeRegistry";
 import { useRunsStore }       from "@/lib/stores/runsStore";
 import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
+const STORAGE_KEY = "nextflow:activeWorkflowId";
+
 export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -28,15 +30,22 @@ export function DashboardShell() {
 
   // ── Orchestrator / workflow-level run ──────────────────────────────────────
   const runWorkflowFnRef = useRef<
-    (() => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) | null
+    ((subset?: { nodes: Node[]; edges: Edge[] }) => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) | null
   >(null);
-  const getSnapshotFnRef    = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
-  const loadWorkflowFnRef   = useRef<((nodes: Node[], edges: Edge[]) => void) | null>(null);
+  const getSnapshotFnRef         = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
+  const getSelectedNodesFnRef    = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
+  const loadWorkflowFnRef        = useRef<((nodes: Node[], edges: Edge[]) => void) | null>(null);
+  const [selectedCount, setSelectedCount] = useState(0);
 
   const handleRegisterRunWorkflow = useCallback(
-    (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => {
+    (fn: (subset?: { nodes: Node[]; edges: Edge[] }) => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => {
       runWorkflowFnRef.current = fn;
     },
+    [],
+  );
+
+  const handleRegisterGetSelectedNodes = useCallback(
+    (fn: () => { nodes: Node[]; edges: Edge[] }) => { getSelectedNodesFnRef.current = fn; },
     [],
   );
 
@@ -57,7 +66,6 @@ export function DashboardShell() {
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
   const [openModalVisible, setOpenModalVisible] = useState(false);
   const [runError,         setRunError]         = useState<string | null>(null);
-  const STORAGE_KEY = "nextflow:activeWorkflowId";
   const savedWorkflowIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null,
   );
@@ -129,45 +137,46 @@ export function DashboardShell() {
   const handleRunWorkflow = useCallback(async () => {
     if (!runWorkflowFnRef.current || workflowStatus === "running") return;
 
-    // Validate all nodes before starting
-    if (getSnapshotFnRef.current) {
-      const { nodes, edges } = getSnapshotFnRef.current();
-      const errors: string[] = [];
-      for (const node of nodes) {
-        const meta = getNodeMeta(node.type ?? "");
-        if (!meta) continue;
-        const connectedHandles = new Set(
-          edges.filter((e) => e.target === node.id).map((e) => e.targetHandle ?? ""),
-        );
-        const err = meta.validate(node.data as Record<string, unknown>, connectedHandles);
-        if (err) errors.push(`${meta.label}: ${err}`);
-      }
-      if (errors.length > 0) {
-        setRunError(errors.join(" · "));
-        setTimeout(() => setRunError(null), 5000);
-        return;
-      }
+    // Decide subgraph: use selected nodes if any, else run all
+    const isPartial = selectedCount > 0;
+    const subgraph  = isPartial ? getSelectedNodesFnRef.current?.() : undefined;
+    const { nodes: allNodes, edges: allEdges } = getSnapshotFnRef.current?.() ?? { nodes: [], edges: [] };
+
+    // Validate the nodes that will actually run
+    const nodesToValidate = isPartial ? (subgraph?.nodes ?? []) : allNodes;
+    const errors: string[] = [];
+    for (const node of nodesToValidate) {
+      const meta = getNodeMeta(node.type ?? "");
+      if (!meta) continue;
+      const connectedHandles = new Set(
+        allEdges.filter((e) => e.target === node.id).map((e) => e.targetHandle ?? ""),
+      );
+      const err = meta.validate(node.data as Record<string, unknown>, connectedHandles);
+      if (err) errors.push(`${meta.label}: ${err}`);
+    }
+    if (errors.length > 0) {
+      setRunError(errors.join(" · "));
+      setTimeout(() => setRunError(null), 5000);
+      return;
     }
 
     setRunError(null);
     setWorkflowStatus("running");
     try {
-      const result = await runWorkflowFnRef.current();
+      const result = await runWorkflowFnRef.current(subgraph);
       setWorkflowRun({ runId: result.runId, publicToken: result.publicToken });
 
-      // Persist the run to the DB (fire and store the returned id)
+      const scope = isPartial ? "partial" : "full";
       const dbRes = await fetch("/api/runs", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           triggerRunId: result.runId,
           workflowName: workflowName || "Untitled",
-          scope:        "full",
+          scope,
           workflowId:   savedWorkflowIdRef.current ?? undefined,
           nodes: result.nodes.map((n) => {
             const data = n.data as Record<string, unknown>;
-            // Strip video binary from DB — fileBase64 can be MBs; execution already
-            // has it via the orchestrator payload so stripping here is safe.
             if (n.type === "uploadVideoNode") {
               const { fileBase64, previewUrl, ...rest } = data;
               void fileBase64; void previewUrl;
@@ -192,7 +201,7 @@ export function DashboardShell() {
     } catch {
       setWorkflowStatus("error");
     }
-  }, [workflowStatus, workflowName]);
+  }, [workflowStatus, workflowName, selectedCount]);
 
   // Subscribe to the orchestrator run, update top-level status, and persist completion
   useEffect(() => {
@@ -273,6 +282,7 @@ export function DashboardShell() {
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
         runError={runError}
+        selectedCount={selectedCount}
       />
       <div className="flex flex-1 overflow-hidden relative">
         <LeftBar
@@ -286,7 +296,10 @@ export function DashboardShell() {
           onNodeSelect={setSelectedNode}
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
           onRegisterGetSnapshot={handleRegisterGetSnapshot}
+          onRegisterGetSelectedNodes={handleRegisterGetSelectedNodes}
           onRegisterLoadWorkflow={handleRegisterLoadWorkflow}
+          onSelectedCountChange={setSelectedCount}
+          onRunSelected={handleRunWorkflow}
           workflowRun={workflowRun}
           isWorkflowRunning={workflowStatus === "running"}
         />

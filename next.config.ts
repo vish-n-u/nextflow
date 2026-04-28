@@ -5,24 +5,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   // Allow next/image to serve images from Transloadit's CDN and S3
-  images: {
-    remotePatterns: [
-      {
-        // Transloadit's own CDN (e.g. https://<assembly>.transloadit.com/...)
-        protocol: "https",
-        hostname: "*.transloadit.com",
-      },
-      {
-        // Transloadit uploads land on S3 — ssl_url points here
-        protocol: "https",
-        hostname: "*.s3.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.s3.*.amazonaws.com",
-      },
-    ],
-  },
+ 
 
   // Security headers applied to every response
   async headers() {

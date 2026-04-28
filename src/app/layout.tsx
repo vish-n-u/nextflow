@@ -14,8 +14,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NextFlow",
-  description: "NextFlow application",
+  title: {
+    default:  "NextFlow",
+    template: "%s | NextFlow",
+  },
+  description: "Build, run, and monitor AI-powered workflows — visually, in real time, for free.",
+  keywords:    ["workflow automation", "AI workflows", "visual programming", "no-code", "LLM"],
+  openGraph: {
+    title:       "NextFlow",
+    description: "Build, run, and monitor AI-powered workflows — visually, in real time, for free.",
+    type:        "website",
+    siteName:    "NextFlow",
+  },
+  twitter: {
+    card:        "summary_large_image",
+    title:       "NextFlow",
+    description: "Build, run, and monitor AI-powered workflows — visually, in real time, for free.",
+  },
+  robots: {
+    index:  true,
+    follow: true,
+  },
 };
 
 export const viewport = {

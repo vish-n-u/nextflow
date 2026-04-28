@@ -152,13 +152,13 @@ function RunRow({ run }: { run: RunResponse }) {
 // ── History tab ───────────────────────────────────────────────────────────────
 
 function HistoryTab() {
-  const { runs, hasMore, loading, loadingMore, error, stale, fetch, fetchMore, invalidate } = useRunsStore();
+  const { runs, hasMore, loading, loadingMore, error, stale, fetch: loadRuns, fetchMore, invalidate } = useRunsStore();
 
   // Fetch on mount (no-ops if already loaded and not stale)
-  useEffect(() => { void fetch(); }, [fetch]);
+  useEffect(() => { void loadRuns(); }, [loadRuns]);
 
   // Re-fetch if invalidated while this tab is mounted
-  useEffect(() => { if (stale) void fetch(); }, [stale, fetch]);
+  useEffect(() => { if (stale) void loadRuns(); }, [stale, fetch]);
 
   // Single-node runs dispatch this event — invalidate so the list refreshes
   useEffect(() => {

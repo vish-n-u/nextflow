@@ -26,11 +26,12 @@ function formatUpdatedAt(iso: string): string {
 }
 
 export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
-  const { workflows, hasMore, loading, loadingMore, error, fetch, fetchMore } = useWorkflowsStore();
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const { workflows, hasMore, loading, loadingMore, error, fetch: loadWorkflows, fetchMore } = useWorkflowsStore();
+  const [loadingId,   setLoadingId]   = useState<string | null>(null);
+  const [selectError, setSelectError] = useState<string | null>(null);
 
   // Fetch on open — no-ops if already loaded and not stale
-  useEffect(() => { void fetch(); }, [fetch]);
+  useEffect(() => { void loadWorkflows(); }, [loadWorkflows]);
 
   const handleSelect = async (id: string) => {
     setLoadingId(id);
@@ -40,7 +41,7 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
       const workflow = await res.json() as WorkflowDetail;
       onLoad(workflow);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load workflow");
+      setSelectError(err instanceof Error ? err.message : "Failed to load workflow");
       setLoadingId(null);
     }
   };
@@ -80,8 +81,8 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
               </div>
             )}
 
-            {error && (
-              <p className="text-xs text-red-400 text-center py-8 px-4">{error}</p>
+            {(error ?? selectError) && (
+              <p className="text-xs text-red-400 text-center py-8 px-4">{error ?? selectError}</p>
             )}
 
             {!loading && !error && workflows.length === 0 && (

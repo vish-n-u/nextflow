@@ -27,7 +27,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
         <div>
           <h2 className="text-sm font-semibold text-zinc-100 mb-1">Something went wrong</h2>
           <p className="text-xs text-zinc-500 leading-relaxed">
-            {error.message || "An unexpected error occurred in the dashboard."}
+            An unexpected error occurred in the dashboard.
           </p>
         </div>
         <button

@@ -14,13 +14,17 @@ interface TopBarProps {
   onToggleLeftBar: () => void;
   onToggleRightBar: () => void;
   runError?: string | null;
+  selectedCount?: number;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onOpenWorkflows, onToggleLeftBar, onToggleRightBar, runError }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onOpenWorkflows, onToggleLeftBar, onToggleRightBar, runError, selectedCount = 0 }: TopBarProps) {
+  const idleLabel =
+    selectedCount > 0 ? `Run (${selectedCount})` : "Run";
+
   const btnLabel =
     workflowStatus === "running" ? "Running…" :
     workflowStatus === "success" ? "Done"      :
-    workflowStatus === "error"   ? "Error"     : "Run";
+    workflowStatus === "error"   ? "Error"     : idleLabel;
 
   const btnCls =
     workflowStatus === "success" ? "bg-green-500 text-white hover:bg-green-400" :

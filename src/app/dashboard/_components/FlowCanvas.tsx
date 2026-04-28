@@ -13,6 +13,8 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useNodes,
+  useViewport,
   type Node,
   type Edge,
   type Connection,
@@ -20,6 +22,7 @@ import {
   type FitViewOptions,
 } from "@xyflow/react";
 
+import { Play } from "lucide-react";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
@@ -60,20 +63,65 @@ function wouldCreateCycle(source: string, target: string, edges: Edge[]): boolea
 
 type Snapshot = { nodes: Node[]; edges: Edge[] };
 
+// ─── Selection overlay ────────────────────────────────────────────────────────
+
+const PADDING = 24;
+
+function SelectionOverlay({ onRun }: { onRun: () => void }) {
+  const nodes                  = useNodes();
+  const { x: vx, y: vy, zoom } = useViewport();
+
+  const selected = nodes.filter((n) => n.selected);
+  if (selected.length < 2) return null;
+
+  const minX = Math.min(...selected.map((n) => n.position.x)) - PADDING;
+  const minY = Math.min(...selected.map((n) => n.position.y)) - PADDING;
+  const maxX = Math.max(...selected.map((n) => n.position.x + (n.measured?.width  ?? 220))) + PADDING;
+  const maxY = Math.max(...selected.map((n) => n.position.y + (n.measured?.height ?? 150))) + PADDING;
+
+  const left   = minX * zoom + vx;
+  const top    = minY * zoom + vy;
+  const width  = (maxX - minX) * zoom;
+  const height = (maxY - minY) * zoom;
+
+  return (
+    <div className="pointer-events-none absolute inset-0" style={{ zIndex: 4 }}>
+      <div className="absolute" style={{ left, top, width, height }}>
+        {/* Dashed bounding box */}
+        <div className="absolute inset-0 rounded-xl border-2 border-dashed border-blue-500/60 bg-blue-500/[0.03]" />
+
+        {/* Floating action button */}
+        <div className="pointer-events-auto absolute -top-9 left-0">
+          <button
+            onClick={onRun}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg transition-colors"
+          >
+            <Play className="w-3 h-3 fill-current" />
+            Run ({selected.length})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Inner component (lives inside ReactFlowProvider) ────────────────────────
 
 interface FlowCanvasInnerProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
-  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
+  onRegisterRunWorkflow: (fn: (subset?: { nodes: Node[]; edges: Edge[] }) => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
+  onRegisterGetSelectedNodes: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
+  onSelectedCountChange: (count: number) => void;
+  onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterLoadWorkflow, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onRunSelected, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition, getNode, updateNodeData, fitView } = useReactFlow();
@@ -102,7 +150,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
       history.current.push({ nodes, edges });
       historyIdx.current = history.current.length - 1;
     }, 300);
-  }, [nodes, edges]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodes, edges]);
 
   const undo = useCallback(() => {
     if (historyIdx.current <= 0) return;
@@ -154,7 +202,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     });
     addNode(nodeToAdd.type, position);
     onNodeAdded();
-  }, [nodeToAdd]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodeToAdd, addNode, onNodeAdded, screenToFlowPosition]);
 
   // ── Connection validation ────────────────────────────────────────────────────
   const isValidConnection = useCallback<IsValidConnection>(
@@ -187,21 +235,23 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   );
 
   // ── Workflow run ─────────────────────────────────────────────────────────────
-  const runWorkflow = useCallback(async (): Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }> => {
+  const runWorkflow = useCallback(async (subset?: { nodes: Node[]; edges: Edge[] }): Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }> => {
+    const nodesToRun = subset?.nodes ?? nodesRef.current;
+    const edgesToRun = subset?.edges ?? edgesRef.current;
     const res = await fetch("/api/nodes/run", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nodeType: "orchestrator",
         data: {
-          nodes: nodesRef.current.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
-          edges: edgesRef.current.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? "" })),
+          nodes: nodesToRun.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          edges: edgesToRun.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? "" })),
         },
       }),
     });
     if (!res.ok) throw new Error("Failed to start workflow");
     const result = await res.json() as { runId: string; publicToken: string };
-    return { ...result, nodes: nodesRef.current, edges: edgesRef.current };
+    return { ...result, nodes: nodesToRun, edges: edgesToRun };
   }, []);
 
   useEffect(() => {
@@ -216,6 +266,32 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   useEffect(() => {
     onRegisterGetSnapshot(getSnapshot);
   }, [getSnapshot, onRegisterGetSnapshot]);
+
+  // ── Selected-nodes snapshot ───────────────────────────────────────────────
+  const getSelectedNodes = useCallback(() => {
+    const selected    = nodesRef.current.filter((n) => n.selected);
+    const selectedIds = new Set(selected.map((n) => n.id));
+    const filteredEdges = edgesRef.current.filter(
+      (e) => selectedIds.has(e.source) && selectedIds.has(e.target),
+    );
+    return { nodes: selected, edges: filteredEdges };
+  }, []);
+
+  useEffect(() => {
+    onRegisterGetSelectedNodes(getSelectedNodes);
+  }, [getSelectedNodes, onRegisterGetSelectedNodes]);
+
+  // Track selection count so TopBar label can update
+  const lastCountRef = useRef(0);
+  const handleSelectionChange = useCallback(
+    ({ nodes: sel }: { nodes: Node[] }) => {
+      if (sel.length !== lastCountRef.current) {
+        lastCountRef.current = sel.length;
+        onSelectedCountChange(sel.length);
+      }
+    },
+    [onSelectedCountChange],
+  );
 
   // ── Load workflow ─────────────────────────────────────────────────────────────
   const loadWorkflow = useCallback(
@@ -296,7 +372,8 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
 
   return (
     <WorkflowRunContext.Provider value={isWorkflowRunning}>
-    <div className="flex-1 h-full bg-[#0a0a0a]" onDrop={onDrop} onDragOver={onDragOver}>
+    <div className="flex-1 h-full bg-[#0a0a0a] relative" onDrop={onDrop} onDragOver={onDragOver}>
+      <SelectionOverlay onRun={onRunSelected} />
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -306,6 +383,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onNodeSelect(node)}
         onPaneClick={() => onNodeSelect(null)}
+        onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={{ animated: true }}
         deleteKeyCode={["Backspace", "Delete"]}
@@ -343,9 +421,12 @@ interface FlowCanvasProps {
   nodeToAdd: { type: string; ts: number } | null;
   onNodeAdded: () => void;
   onNodeSelect: (node: Node | null) => void;
-  onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
+  onRegisterRunWorkflow: (fn: (subset?: { nodes: Node[]; edges: Edge[] }) => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
+  onRegisterGetSelectedNodes: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
+  onSelectedCountChange: (count: number) => void;
+  onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
 }
