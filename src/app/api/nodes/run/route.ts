@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth as clerkAuth } from "@clerk/nextjs/server";
 import { auth } from "@trigger.dev/sdk/v3";
 
+import { withAuth } from "@/lib/with-auth";
+import { AppApiError } from "@/lib/errors";
+import { triggerNodeSchema } from "@/lib/zod/schemas/nodes";
 import { TASK_REGISTRY } from "@/trigger/taskRegistry";
 import { orchestratorTask } from "@/trigger/orchestrator";
 
@@ -21,17 +23,12 @@ async function triggerForNodeType(nodeType: string, data: NodeData) {
   return entry.task.trigger(data);
 }
 
-export async function POST(req: Request) {
-  const { userId } = await clerkAuth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { nodeType, data } = await req.json() as { nodeType: string; data: NodeData };
+export const POST = withAuth(async ({ req, headers }) => {
+  const { nodeType, data } = triggerNodeSchema.parse(await req.json());
 
   const handle = await triggerForNodeType(nodeType, data);
   if (!handle) {
-    return NextResponse.json({ error: `Unknown node type: ${nodeType}` }, { status: 400 });
+    throw new AppApiError({ code: "bad_request", message: `Unknown node type: ${nodeType}` });
   }
 
   const publicToken = await auth.createPublicToken({
@@ -39,5 +36,5 @@ export async function POST(req: Request) {
     expirationTime: "2h",
   });
 
-  return NextResponse.json({ runId: handle.id, publicToken });
-}
+  return NextResponse.json({ runId: handle.id, publicToken }, { headers });
+});

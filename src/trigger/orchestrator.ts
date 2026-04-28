@@ -86,10 +86,13 @@ export const nodeRunnerTask = task({
 export const orchestratorTask = task({
   id: "orchestrator",
   maxDuration: 600,
+  // Never retry the orchestrator automatically — a retry would rerun every node
+  // from scratch. Node-level retries are configured on individual tasks instead.
+  retry: { maxAttempts: 1 },
   run: async (payload: { nodes: FlowNode[]; edges: FlowEdge[] }) => {
     const { nodes, edges } = payload;
     const levels       = buildLevels(nodes, edges);
-    const nodeOutputs:   Record<string, unknown>    = {};
+    const nodeOutputs:   Record<string, string>     = {};
     const nodeStatuses:  Record<string, NodeStatus> = {};
     const nodeErrors:    Record<string, string>     = {};
     const nodeDurations: Record<string, number>     = {};
@@ -130,7 +133,7 @@ export const orchestratorTask = task({
         const node = level[i];
         nodeDurations[node.id] = levelMs;
         if (run.ok) {
-          nodeOutputs[node.id]  = run.output.output;
+          nodeOutputs[node.id]  = run.output.output as string;
           nodeStatuses[node.id] = "success";
         } else {
           nodeStatuses[node.id] = "error";

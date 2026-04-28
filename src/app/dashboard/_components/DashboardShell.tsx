@@ -89,7 +89,7 @@ export function DashboardShell() {
             void status; void output; void errorMessage;
             void runId; void publicToken; void dbRunId;
             void fileBase64; void previewUrl;
-            return { id: n.id, type: n.type ?? "", data: configData };
+            return { id: n.id, type: n.type ?? "", data: configData, position: n.position };
           }),
           edges: edges.map((e) => ({
             source:       e.source,

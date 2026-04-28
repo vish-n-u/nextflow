@@ -35,12 +35,21 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
     ? (STATUS_BORDER[status] ?? "border-zinc-800")
     : selected ? "border-zinc-500" : "border-zinc-800";
 
+  const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+
   const handleFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      updateNodeData(id, {
+        status: NodeStatus.Error,
+        errorMessage: "File exceeds the 3 MB limit. Please choose a smaller video.",
+      });
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       const fileBase64 = (e.target?.result as string).split(",")[1];
-      updateNodeData(id, { previewUrl, fileBase64, fileName: file.name, status: "idle", output: null });
+      updateNodeData(id, { previewUrl, fileBase64, fileName: file.name, status: "idle", output: null, errorMessage: null });
     };
     reader.readAsDataURL(file);
   };
@@ -111,7 +120,7 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
         <input
           ref={inputRef}
           type="file"
-          accept="video/mp4,video/mov,video/webm"
+          accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
         />
@@ -130,7 +139,7 @@ export function UploadVideoNode({ id, data, selected }: NodeProps<UploadVideoNod
             className="nodrag w-full flex flex-col items-center gap-2 py-6 border border-dashed border-zinc-700 hover:border-zinc-500 rounded-lg text-zinc-600 hover:text-zinc-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-700 disabled:hover:text-zinc-600">
             <Upload className="w-5 h-5" />
             <span className="text-xs">Click to upload video</span>
-            <span className="text-[10px] text-zinc-700">MP4, MOV, WebM</span>
+            <span className="text-[10px] text-zinc-700">MP4, MOV, WebM, M4V · max 3 MB</span>
           </button>
         )}
 
