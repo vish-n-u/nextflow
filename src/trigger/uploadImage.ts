@@ -1,5 +1,5 @@
 import { logger, task } from "@trigger.dev/sdk";
-import { Transloadit, type AssemblyOptions } from "transloadit";
+import { Transloadit } from "transloadit";
 
 const transloadit = new Transloadit({
   authKey: process.env.TRANSLOADIT_AUTH_KEY!,
@@ -20,7 +20,7 @@ export const uploadImageTask = task({
 
     logger.log("Starting image upload to Transloadit", { fileName });
 
-    const options: AssemblyOptions = {
+    const options: Parameters<typeof transloadit.createAssembly>[0] = {
       // Wait for all assembly steps to finish before returning,
       // so assembly.results is populated when we read it below.
       waitForCompletion: true,
@@ -35,12 +35,11 @@ export const uploadImageTask = task({
     };
 
     if (tempUrl) {
-      options.params!.files = { file: tempUrl };
-    } else if (fileBase64) {
-      const buffer = Buffer.from(fileBase64, "base64");
-      // `uploads` accepts Buffer/Readable directly; `files` only accepts file paths (strings)
-      options.uploads = { file: buffer };
-    }
+  options.uploads = { file: tempUrl };
+} else if (fileBase64) {
+  const buffer = Buffer.from(fileBase64, "base64");
+  options.uploads = { file: buffer };
+}
 
     const assembly = await transloadit.createAssembly(options);
 

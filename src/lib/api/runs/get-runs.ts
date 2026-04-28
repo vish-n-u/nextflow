@@ -8,11 +8,16 @@ import type { RunWithDetails } from "./transform-run";
  * NodeRuns are ordered by startedAt asc so they render in execution order
  * in the history sidebar.
  */
-export async function getRuns(userId: string): Promise<RunWithDetails[]> {
+export async function getRuns(
+  userId: string,
+  limit  = 5,
+  offset = 0,
+): Promise<RunWithDetails[]> {
   return prisma.run.findMany({
     where:   { userId },
     orderBy: { startedAt: "desc" },
-    take:    30,
+    take:    limit,
+    skip:    offset,
     select: {
       id:          true,
       status:      true,

@@ -20,7 +20,7 @@ export const uploadVideoTask = task({
 
     logger.log("Starting video upload to Transloadit", { fileName });
 
-    const options: Transloadit.AssemblyOptions = {
+    const options: Parameters<typeof transloadit.createAssembly>[0] = {
       waitForCompletion: true,
       params: {
         steps: {
@@ -32,12 +32,12 @@ export const uploadVideoTask = task({
       },
     };
 
-    if (tempUrl) {
-      options.params!.files = { file: tempUrl };
-    } else if (fileBase64) {
-      const buffer = Buffer.from(fileBase64, "base64");
-      options.uploads = { file: buffer };
-    }
+  if (tempUrl) {
+  options.uploads = { file: tempUrl };
+} else if (fileBase64) {
+  const buffer = Buffer.from(fileBase64, "base64");
+  options.uploads = { file: buffer };
+}
 
     const assembly = await transloadit.createAssembly(options);
 

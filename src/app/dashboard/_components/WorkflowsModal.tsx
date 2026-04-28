@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FolderOpen, RefreshCw, X, Clock, Box } from "lucide-react";
 import type { WorkflowSummary } from "@/lib/api/workflows";
+
+const PAGE = 5;
 
 interface WorkflowDetail {
   id:    string;
@@ -26,29 +28,35 @@ function formatUpdatedAt(iso: string): string {
 }
 
 export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
-  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [workflows,   setWorkflows]   = useState<WorkflowSummary[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore,     setHasMore]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [loadingId,   setLoadingId]   = useState<string | null>(null);
+  const offsetRef = useRef(0);
 
-  // Fetch workflow list on mount
+  const fetchPage = async (offset: number, append: boolean) => {
+    const res = await fetch(`/api/workflows?limit=${PAGE}&offset=${offset}`);
+    if (!res.ok) throw new Error("Failed to load workflows");
+    const data = await res.json() as WorkflowSummary[];
+    setWorkflows((prev) => append ? [...prev, ...data] : data);
+    setHasMore(data.length === PAGE);
+    offsetRef.current = offset + data.length;
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/workflows");
-        if (!res.ok) throw new Error("Failed to load workflows");
-        const data = await res.json() as WorkflowSummary[];
-        if (!cancelled) { setWorkflows(data); setLoading(false); }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load workflows");
-          setLoading(false);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    void fetchPage(0, false)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load workflows"))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try { await fetchPage(offsetRef.current, true); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to load workflows"); }
+    finally { setLoadingMore(false); }
+  };
 
   const handleSelect = async (id: string) => {
     setLoadingId(id);
@@ -120,7 +128,6 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
                     disabled={loadingId !== null}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-left group"
                   >
-                    {/* Loading spinner for the selected item */}
                     {loadingId === wf.id ? (
                       <RefreshCw className="w-4 h-4 text-zinc-400 animate-spin shrink-0" />
                     ) : (
@@ -128,7 +135,6 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
                         <Box className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
                       </div>
                     )}
-
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-zinc-200 truncate">{wf.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -144,6 +150,18 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
                     </div>
                   </button>
                 ))}
+
+                {hasMore && (
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    {loadingMore
+                      ? <><RefreshCw className="w-3 h-3 animate-spin" />Loading…</>
+                      : "Load more"}
+                  </button>
+                )}
               </div>
             )}
           </div>

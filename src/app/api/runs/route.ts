@@ -7,8 +7,11 @@ import { createRun, getRuns, transformRun } from "@/lib/api/runs";
 // GET /api/runs
 // Returns the last 30 runs for the authenticated user, newest first.
 // Each run includes its node-level results for the history sidebar.
-export const GET = withAuth(async ({ headers, session }) => {
-  const runs = await getRuns(session.userId);
+export const GET = withAuth(async ({ req, headers, session }) => {
+  const { searchParams } = new URL(req.url);
+  const limit  = Math.min(parseInt(searchParams.get("limit")  ?? "5",  10), 50);
+  const offset = Math.max(parseInt(searchParams.get("offset") ?? "0",  10), 0);
+  const runs = await getRuns(session.userId, limit, offset);
   return NextResponse.json(runs.map(transformRun), { headers });
 });
 

@@ -12,10 +12,16 @@ export interface WorkflowSummary {
  * Only fetches summary fields — full nodes/edges JSON is excluded to keep
  * the list response small. Use getWorkflow() to load a specific workflow.
  */
-export async function listWorkflows(userId: string): Promise<WorkflowSummary[]> {
+export async function listWorkflows(
+  userId: string,
+  limit  = 5,
+  offset = 0,
+): Promise<WorkflowSummary[]> {
   const workflows = await prisma.workflow.findMany({
     where:   { userId },
     orderBy: { updatedAt: "desc" },
+    take:    limit,
+    skip:    offset,
     select: {
       id:        true,
       name:      true,

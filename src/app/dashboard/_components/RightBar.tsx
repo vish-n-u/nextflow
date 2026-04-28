@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MousePointerClick, History, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+
+const PAGE = 5;
 import type { Node } from "@xyflow/react";
 import type { RunResponse, NodeRunResponse } from "@/lib/api/runs";
 
@@ -151,10 +153,13 @@ function RunRow({ run }: { run: RunResponse }) {
 // ── History tab ───────────────────────────────────────────────────────────────
 
 function HistoryTab({ historyKey }: { historyKey: number }) {
-  const [runs,    setRuns]    = useState<RunResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
-  const [localKey, setLocalKey] = useState(0);
+  const [runs,        setRuns]        = useState<RunResponse[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore,     setHasMore]     = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [localKey,    setLocalKey]    = useState(0);
+  const offsetRef = useRef(0);
 
   // Single-node runs dispatch this event from RunStatus after PATCH completes
   useEffect(() => {
@@ -163,27 +168,37 @@ function HistoryTab({ historyKey }: { historyKey: number }) {
     return () => window.removeEventListener("nextflow:run-complete", handler);
   }, []);
 
+  const fetchPage = async (offset: number, append: boolean) => {
+    const res = await fetch(`/api/runs?limit=${PAGE}&offset=${offset}`);
+    if (!res.ok) throw new Error("Failed to load history");
+    const data = await res.json() as RunResponse[];
+    setRuns((prev) => append ? [...prev, ...data] : data);
+    setHasMore(data.length === PAGE);
+    offsetRef.current = offset + data.length;
+  };
+
+  // Reload from page 0 whenever historyKey or localKey changes (new run completed)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    offsetRef.current = 0;
 
-    void (async () => {
-      try {
-        const res = await fetch("/api/runs");
-        if (!res.ok) throw new Error("Failed to load history");
-        const data = await res.json() as RunResponse[];
-        if (!cancelled) { setRuns(data); setLoading(false); }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load history");
-          setLoading(false);
-        }
-      }
-    })();
+    void fetchPage(0, false)
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load history");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [historyKey, localKey]);
+  }, [historyKey, localKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try { await fetchPage(offsetRef.current, true); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to load history"); }
+    finally { setLoadingMore(false); }
+  };
 
   if (loading) {
     return (
@@ -217,6 +232,17 @@ function HistoryTab({ historyKey }: { historyKey: number }) {
       {runs.map((run) => (
         <RunRow key={run.id} run={run} />
       ))}
+      {hasMore && (
+        <button
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
+        >
+          {loadingMore
+            ? <><RefreshCw className="w-3 h-3 animate-spin" />Loading…</>
+            : "Load more"}
+        </button>
+      )}
     </div>
   );
 }
