@@ -157,7 +157,7 @@ export function DashboardShell() {
         setWorkflowRun(null);
 
         if (dbRunIdRef.current) {
-          void fetch(`/api/runs/${dbRunIdRef.current}`, {
+          await fetch(`/api/runs/${dbRunIdRef.current}`, {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -165,10 +165,9 @@ export function DashboardShell() {
               completedAt: new Date().toISOString(),
               nodeResults,
             }),
-          }).then(() => {
-            dbRunIdRef.current = null;
-            setHistoryKey((k) => k + 1);
           });
+          dbRunIdRef.current = null;
+          setHistoryKey((k) => k + 1);
         }
 
         break;

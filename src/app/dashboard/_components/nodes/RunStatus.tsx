@@ -53,7 +53,7 @@ export function RunStatus({ nodeId, runId, publicToken, dbRunId }: RunStatusProp
 
         const currentDbRunId = dbRunIdRef.current;
         if (currentDbRunId) {
-          void fetch(`/api/runs/${currentDbRunId}`, {
+          await fetch(`/api/runs/${currentDbRunId}`, {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -66,9 +66,8 @@ export function RunStatus({ nodeId, runId, publicToken, dbRunId }: RunStatusProp
                 },
               },
             }),
-          }).then(() => {
-            window.dispatchEvent(new CustomEvent("nextflow:run-complete"));
           });
+          window.dispatchEvent(new CustomEvent("nextflow:run-complete"));
         }
 
         break;

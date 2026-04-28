@@ -168,18 +168,19 @@ function HistoryTab({ historyKey }: { historyKey: number }) {
     setLoading(true);
     setError(null);
 
-    fetch("/api/runs")
-      .then(async (res) => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/runs");
         if (!res.ok) throw new Error("Failed to load history");
-        return res.json() as Promise<RunResponse[]>;
-      })
-      .then((data) => { if (!cancelled) { setRuns(data); setLoading(false); } })
-      .catch((err: unknown) => {
+        const data = await res.json() as RunResponse[];
+        if (!cancelled) { setRuns(data); setLoading(false); }
+      } catch (err: unknown) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load history");
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => { cancelled = true; };
   }, [historyKey, localKey]);

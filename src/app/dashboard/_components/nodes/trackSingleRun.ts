@@ -20,19 +20,20 @@ export function trackSingleRun({
   data,
   onDbRunId,
 }: TrackSingleRunOptions): void {
-  void fetch("/api/runs", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      triggerRunId,
-      workflowName: displayName,
-      scope:        "single",
-      nodes:        [{ id: nodeId, type: nodeType, data }],
-      edges:        [],
-    }),
-  }).then(async (res) => {
+  void (async () => {
+    const res = await fetch("/api/runs", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        triggerRunId,
+        workflowName: displayName,
+        scope:        "single",
+        nodes:        [{ id: nodeId, type: nodeType, data }],
+        edges:        [],
+      }),
+    });
     if (!res.ok) return;
     const { id } = await res.json() as { id: string };
     onDbRunId(id);
-  });
+  })();
 }

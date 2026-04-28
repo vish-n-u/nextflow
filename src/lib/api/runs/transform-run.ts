@@ -51,6 +51,9 @@ export interface RunResponse {
 }
 
 // ── Transformers ──────────────────────────────────────────────────────────────
+// Prisma returns Date objects; JSON.stringify would silently coerce them to
+// strings in unpredictable formats. These helpers convert explicitly to ISO
+// strings and flatten the workflow relation so the client gets a flat shape.
 
 function transformNodeRun(n: NodeRunRecord): NodeRunResponse {
   return {

@@ -1,3 +1,5 @@
+// Maps semantic error codes to HTTP status numbers.
+// Used by withAuth to convert AppApiError into the correct response status.
 export const ErrorCodes = {
   bad_request:           400,
   unauthorized:          401,
@@ -11,6 +13,14 @@ export const ErrorCodes = {
 
 export type ErrorCode = keyof typeof ErrorCodes;
 
+/**
+ * Typed error class for intentional API failures.
+ * Throw this (never return it) from service functions — withAuth catches it
+ * and sends the right HTTP status + JSON body automatically.
+ *
+ * Example:
+ *   throw new AppApiError({ code: "not_found", message: "Run not found." });
+ */
 export class AppApiError extends Error {
   public readonly code: ErrorCode;
 
