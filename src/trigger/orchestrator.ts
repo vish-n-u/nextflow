@@ -24,19 +24,16 @@ type NodeStatus = "running" | "success" | "error";
 function buildLevels(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[][] {
   const inDegree = new Map<string, number>();
   const adj      = new Map<string, string[]>();
-  console.log("Building levels for nodes", nodes, "and edges", edges);
 
   for (const node of nodes) {
     inDegree.set(node.id, 0);
     adj.set(node.id, []);
   }
-  console.log("Initialized inDegree and adjacency list", { inDegree, adj });
 
   for (const edge of edges) {
     adj.get(edge.source)?.push(edge.target);
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
-  console.log("Populated inDegree and adjacency list", { inDegree, adj });
 
   const levels: FlowNode[][] = [];
   let current = nodes.filter((n) => inDegree.get(n.id) === 0);
@@ -53,7 +50,6 @@ function buildLevels(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[][] {
     }
     current = next;
   }
-  console.log("Built execution levels", levels,current);
 
   return levels;
 }

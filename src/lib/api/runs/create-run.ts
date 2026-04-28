@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, type Prisma } from "@/lib/prisma";
 import type { CreateRunInput } from "@/lib/zod/schemas/runs";
 
 /**
@@ -38,7 +38,7 @@ export async function createRun(input: CreateRunInput, userId: string): Promise<
           nodeId:   n.id,
           nodeType: n.type,
           status:   "pending" as const,
-          input:    n.data,
+          input:    n.data as Prisma.InputJsonValue,
         })),
       },
     },

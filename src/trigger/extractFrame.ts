@@ -18,14 +18,6 @@ export const extractFrameTask = task({
 
     // Timestamp is always a percentage (0–100). Clamp to valid range.
     const pct = Math.min(100, Math.max(0, parseFloat(timestamp) || 0));
-    const thumbStep: Record<string, unknown> = {
-      robot:     "/video/thumbs",
-      use:       "imported",
-      count:     1,
-      result:    true,
-      format:    "jpg",
-      positions: [`${pct}%`],
-    };
 
     const assembly = await transloadit.createAssembly({
       waitForCompletion: true,
@@ -35,7 +27,14 @@ export const extractFrameTask = task({
             robot: "/http/import",
             url:   video_url,
           },
-          frame: thumbStep,
+          frame: {
+            robot:     "/video/thumbs",
+            use:       "imported",
+            count:     1,
+            result:    true,
+            format:    "jpg",
+            positions: [`${pct}%`],
+          },
         },
       },
     });

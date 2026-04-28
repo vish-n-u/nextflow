@@ -24,8 +24,6 @@ export function DashboardShell() {
   const handleNodeAdd   = useCallback((type: string) => setNodeToAdd({ type, ts: Date.now() }), []);
   const handleNodeAdded = useCallback(() => setNodeToAdd(null), []);
 
-  console.log("DashboardShell rendered", { workflowName, selectedNode, nodeToAdd });
-
   // ── Orchestrator / workflow-level run ──────────────────────────────────────
   const runWorkflowFnRef = useRef<
     (() => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) | null

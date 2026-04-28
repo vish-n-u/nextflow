@@ -1,13 +1,9 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
+import MobileMenu from "./_components/MobileMenu";
 
 const navLinks = ["Features", "Workflows", "Integrations", "Pricing", "Docs"];
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Navbar */}
@@ -46,49 +42,9 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden flex flex-col gap-1.5 p-2"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          <span className={`block h-0.5 w-6 bg-white transition-transform duration-200 ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
-          <span className={`block h-0.5 w-6 bg-white transition-opacity duration-200 ${menuOpen ? "opacity-0" : ""}`} />
-          <span className={`block h-0.5 w-6 bg-white transition-transform duration-200 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
-        </button>
+        {/* Mobile hamburger + overlay (client component) */}
+        <MobileMenu />
       </header>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-40 bg-zinc-950 flex flex-col items-center justify-center gap-8 md:hidden">
-          {navLinks.map((link) => (
-            <a
-              key={link}
-              href="#"
-              className="text-2xl font-medium text-zinc-200 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {link}
-            </a>
-          ))}
-          <div className="flex flex-col items-center gap-4 mt-4">
-            <Link
-              href="/sign-up"
-              className="rounded-full bg-white text-black text-sm font-semibold px-8 py-3 w-48 text-center"
-              onClick={() => setMenuOpen(false)}
-            >
-              Sign up for free
-            </Link>
-            <Link
-              href="/sign-in"
-              className="rounded-full bg-zinc-800 text-white text-sm font-semibold px-8 py-3 w-48 text-center"
-              onClick={() => setMenuOpen(false)}
-            >
-              Log in
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* Hero */}
       <main className="flex flex-col items-center text-center pt-40 pb-20 px-6 flex-1">

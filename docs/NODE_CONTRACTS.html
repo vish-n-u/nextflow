@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NextFlow — Node Contracts</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #e4e4e7;
+      padding: 2.5rem 1.5rem;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; }
+
+    header { margin-bottom: 3rem; }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fafafa;
+    }
+    header p {
+      margin-top: 0.5rem;
+      color: #71717a;
+      font-size: 0.875rem;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+
+    section { margin-bottom: 3.5rem; }
+    section h2 {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #52525b;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Type badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge-text   { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+    .badge-image  { background: #2d1b5e; color: #c084fc; border: 1px solid #7c3aed; }
+    .badge-video  { background: #431407; color: #fb923c; border: 1px solid #c2410c; }
+    .badge-enum   { background: #1c1c1c; color: #a1a1aa; border: 1px solid #3f3f46; }
+    .badge-file   { background: #1c1c1c; color: #a1a1aa; border: 1px solid #3f3f46; }
+    .badge-number { background: #1c2e1c; color: #86efac; border: 1px solid #166534; }
+    .badge-multi  { background: #2d1b5e; color: #c084fc; border: 1px solid #7c3aed; opacity: 0.75; }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .dot-text  { background: #60a5fa; }
+    .dot-image { background: #c084fc; }
+    .dot-video { background: #fb923c; }
+
+    /* ── Type legend ── */
+    .type-legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .type-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      min-width: 160px;
+    }
+    .type-legend-item .label { font-size: 0.8125rem; font-weight: 600; }
+    .type-legend-item .desc  { font-size: 0.75rem; color: #71717a; margin-top: 0.125rem; }
+
+    /* ── Compatibility matrix ── */
+    .matrix-wrap { overflow-x: auto; }
+    table.matrix {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      min-width: 520px;
+    }
+    table.matrix th, table.matrix td {
+      padding: 0.625rem 1rem;
+      border: 1px solid #27272a;
+      text-align: center;
+    }
+    table.matrix th {
+      background: #18181b;
+      color: #71717a;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    table.matrix th:first-child { text-align: left; }
+    table.matrix td:first-child { text-align: left; font-weight: 600; background: #18181b; }
+    .compat-yes { color: #4ade80; font-size: 1rem; }
+    .compat-no  { color: #3f3f46; font-size: 1rem; }
+
+    /* ── Node cards ── */
+    .node-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .node-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .node-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.75rem 1rem;
+      background: #09090b;
+      border-bottom: 1px solid #27272a;
+    }
+    .node-icon {
+      width: 28px; height: 28px;
+      border-radius: 0.375rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+    }
+    .node-card-header h3 { font-size: 0.875rem; font-weight: 600; color: #fafafa; }
+    .node-card-header p  { font-size: 0.6875rem; color: #71717a; margin-top: 0.125rem; }
+
+    .node-card-body { padding: 0.875rem 1rem; display: flex; flex-direction: column; gap: 0.875rem; }
+
+    .io-section-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #52525b;
+      margin-bottom: 0.4rem;
+    }
+
+    .io-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.45rem 0.625rem;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+    }
+    .io-row + .io-row { margin-top: 0.3rem; }
+
+    .io-field { font-weight: 600; color: #d4d4d8; flex-shrink: 0; min-width: 90px; }
+    .io-source { color: #71717a; font-size: 0.6875rem; flex: 1; line-height: 1.4; }
+    .io-required {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #f87171;
+      background: #2d0707;
+      border: 1px solid #7f1d1d;
+      border-radius: 999px;
+      padding: 0.1rem 0.4rem;
+      flex-shrink: 0;
+      align-self: center;
+    }
+    .io-optional {
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: #52525b;
+      border: 1px solid #3f3f46;
+      border-radius: 999px;
+      padding: 0.1rem 0.4rem;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    .io-divider {
+      height: 1px;
+      background: #27272a;
+      margin: 0.125rem 0;
+    }
+
+    .output-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0.625rem;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+    }
+    .output-text  { background: #0c1929; border: 1px solid #1d4ed8; }
+    .output-image { background: #150d2b; border: 1px solid #7c3aed; }
+    .output-video { background: #1a0a03; border: 1px solid #c2410c; }
+
+    .output-row .out-label { font-weight: 600; color: #a1a1aa; flex-shrink: 0; }
+    .output-row .out-desc  { color: #71717a; font-size: 0.6875rem; }
+
+    /* ── Connection examples ── */
+    .example-grid { display: flex; flex-direction: column; gap: 0.375rem; }
+    .example-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      font-size: 0.8125rem;
+      padding: 0.375rem 0.625rem;
+      border-radius: 0.375rem;
+    }
+    .example-valid   { background: #0a1f0a; border: 1px solid #166534; }
+    .example-invalid { background: #1a0707; border: 1px solid #7f1d1d; }
+    .example-arrow { color: #52525b; font-size: 1rem; }
+    .example-invalid .example-arrow { color: #7f1d1d; }
+    .ex-node { font-weight: 600; color: #d4d4d8; }
+    .ex-handle { color: #71717a; font-size: 0.75rem; }
+    .ex-reason { color: #52525b; font-size: 0.6875rem; margin-left: auto; }
+    .ex-reason-invalid { color: #7f1d1d; font-size: 0.6875rem; margin-left: auto; }
+    .tick { color: #4ade80; }
+    .cross { color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>NextFlow — Node Contracts</h1>
+    <p>Defines the inputs, outputs, and connection compatibility rules for every node in the canvas. An edge is only valid when the source output type matches the target handle's expected type.</p>
+  </header>
+
+  <!-- ── Output types ── -->
+  <section>
+    <h2>Output Types</h2>
+    <div class="type-legend">
+      <div class="type-legend-item">
+        <span class="dot dot-text"></span>
+        <div>
+          <div class="label" style="color:#60a5fa">Text</div>
+          <div class="desc">A plain UTF-8 string</div>
+        </div>
+      </div>
+      <div class="type-legend-item">
+        <span class="dot dot-image"></span>
+        <div>
+          <div class="label" style="color:#c084fc">Image</div>
+          <div class="desc">A public URL pointing to an image</div>
+        </div>
+      </div>
+      <div class="type-legend-item">
+        <span class="dot dot-video"></span>
+        <div>
+          <div class="label" style="color:#fb923c">Video</div>
+          <div class="desc">A public URL pointing to a video</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Compatibility matrix ── -->
+  <section>
+    <h2>Compatibility Matrix</h2>
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Source output →</th>
+            <th><span class="badge badge-text"><span class="dot dot-text"></span>Text input</span></th>
+            <th><span class="badge badge-image"><span class="dot dot-image"></span>Image input</span></th>
+            <th><span class="badge badge-multi"><span class="dot dot-image"></span>Images[] input</span></th>
+            <th><span class="badge badge-video"><span class="dot dot-video"></span>Video input</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-text"><span class="dot dot-text"></span>Text</span></td>
+            <td><span class="compat-yes">✓</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-no">✕</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-image"><span class="dot dot-image"></span>Image</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-yes">✓</span></td>
+            <td><span class="compat-yes">✓</span></td>
+            <td><span class="compat-no">✕</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-video"><span class="dot dot-video"></span>Video</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-no">✕</span></td>
+            <td><span class="compat-yes">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:0.625rem;font-size:0.75rem;color:#52525b;">
+      <strong style="color:#71717a">Images[]</strong> is a multi-connection handle — multiple <span style="color:#c084fc">Image</span> outputs can connect to it and are collected into an array at runtime.
+    </p>
+  </section>
+
+  <!-- ── Node cards ── -->
+  <section>
+    <h2>Nodes</h2>
+    <div class="node-grid">
+
+      <!-- TextNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#1c1c1c;border:1px solid #3f3f46;">T</div>
+          <div>
+            <h3>TextNode</h3>
+            <p>Provides a static text value to downstream nodes</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">text</span>
+              <span class="badge badge-text"><span class="dot dot-text"></span>Text</span>
+              <span class="io-source">User — textarea</span>
+              <span class="io-optional">optional</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-text">
+              <span class="out-label">Text</span>
+              <span class="out-desc">The exact string entered by the user</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UploadImageNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#150d2b;border:1px solid #7c3aed;">🖼</div>
+          <div>
+            <h3>UploadImageNode</h3>
+            <p>Uploads a local image and exposes its CDN URL</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">file</span>
+              <span class="badge badge-file">File</span>
+              <span class="io-source">User — file picker (PNG, JPG, WEBP)</span>
+              <span class="io-required">required</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-image">
+              <span class="out-label" style="color:#c084fc">Image</span>
+              <span class="out-desc">CDN URL of the uploaded image (Transloadit)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UploadVideoNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#1a0a03;border:1px solid #c2410c;">▶</div>
+          <div>
+            <h3>UploadVideoNode</h3>
+            <p>Uploads a local video and exposes its CDN URL</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">file</span>
+              <span class="badge badge-file">File</span>
+              <span class="io-source">User — file picker (MP4, MOV, WebM)</span>
+              <span class="io-required">required</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-video">
+              <span class="out-label" style="color:#fb923c">Video</span>
+              <span class="out-desc">CDN URL of the uploaded video</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RunLLMNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#0f172a;border:1px solid #1d4ed8;">✦</div>
+          <div>
+            <h3>RunLLMNode</h3>
+            <p>Sends a prompt to a Gemini model, returns text</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">model</span>
+              <span class="badge badge-enum">Enum</span>
+              <span class="io-source">User — dropdown only (not connectable)</span>
+              <span class="io-optional">optional</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">system_prompt</span>
+              <span class="badge badge-text"><span class="dot dot-text"></span>Text</span>
+              <span class="io-source">User textarea <strong>or</strong> connected Text node · handle: <code>system_prompt</code></span>
+              <span class="io-optional">optional</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">user_message</span>
+              <span class="badge badge-text"><span class="dot dot-text"></span>Text</span>
+              <span class="io-source">User textarea <strong>or</strong> connected Text node · handle: <code>user_message</code></span>
+              <span class="io-required">required</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">images</span>
+              <span class="badge badge-multi"><span class="dot dot-image"></span>Image[]</span>
+              <span class="io-source">Connected Image nodes (multiple) · handle: <code>images</code></span>
+              <span class="io-optional">optional</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-text">
+              <span class="out-label">Text</span>
+              <span class="out-desc">The LLM's text response</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CropImageNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#150d2b;border:1px solid #7c3aed;">✂</div>
+          <div>
+            <h3>CropImageNode</h3>
+            <p>Crops an image to a percentage-based region</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">image_url</span>
+              <span class="badge badge-image"><span class="dot dot-image"></span>Image</span>
+              <span class="io-source">Connected Image node · handle: <code>image</code></span>
+              <span class="io-required">required</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">x_percent</span>
+              <span class="badge badge-number">Number</span>
+              <span class="io-source">User — number input (0–100, default 0)</span>
+              <span class="io-optional">optional</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">y_percent</span>
+              <span class="badge badge-number">Number</span>
+              <span class="io-source">User — number input (0–100, default 0)</span>
+              <span class="io-optional">optional</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">width_percent</span>
+              <span class="badge badge-number">Number</span>
+              <span class="io-source">User — number input (0–100, default 100)</span>
+              <span class="io-optional">optional</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">height_percent</span>
+              <span class="badge badge-number">Number</span>
+              <span class="io-source">User — number input (0–100, default 100)</span>
+              <span class="io-optional">optional</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-image">
+              <span class="out-label" style="color:#c084fc">Image</span>
+              <span class="out-desc">URL of the cropped image</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ExtractFrameNode -->
+      <div class="node-card">
+        <div class="node-card-header">
+          <div class="node-icon" style="background:#1a0a03;border:1px solid #c2410c;">⏱</div>
+          <div>
+            <h3>ExtractFrameNode</h3>
+            <p>Extracts a video frame at a timestamp as an image</p>
+          </div>
+        </div>
+        <div class="node-card-body">
+          <div>
+            <div class="io-section-label">Inputs</div>
+            <div class="io-row">
+              <span class="io-field">video_url</span>
+              <span class="badge badge-video"><span class="dot dot-video"></span>Video</span>
+              <span class="io-source">Connected Video node · handle: <code>video</code></span>
+              <span class="io-required">required</span>
+            </div>
+            <div class="io-row" style="margin-top:0.3rem">
+              <span class="io-field">timestamp</span>
+              <span class="badge badge-text"><span class="dot dot-text"></span>Text</span>
+              <span class="io-source">User — text input (e.g. <code>"5"</code> or <code>"00:01:30"</code>, default "0")</span>
+              <span class="io-optional">optional</span>
+            </div>
+          </div>
+          <div class="io-divider"></div>
+          <div>
+            <div class="io-section-label">Output — handle: <code style="color:#52525b">output</code></div>
+            <div class="output-row output-image">
+              <span class="out-label" style="color:#c084fc">Image</span>
+              <span class="out-desc">URL of the extracted frame</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Connection examples ── -->
+  <section>
+    <h2>Connection Examples</h2>
+
+    <p style="font-size:0.8125rem;color:#71717a;margin-bottom:1rem;">Valid connections and the reason each invalid one fails.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
+
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#166534;margin-bottom:0.5rem;">✓ Valid</div>
+        <div class="example-grid">
+          <div class="example-row example-valid">
+            <span class="ex-node">TextNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(user_message)</span>
+            <span class="ex-reason">Text → Text</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">TextNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(system_prompt)</span>
+            <span class="ex-reason">Text → Text</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">UploadImageNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(images)</span>
+            <span class="ex-reason">Image → Image[]</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">UploadImageNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">CropImageNode</span>
+            <span class="ex-handle">(image)</span>
+            <span class="ex-reason">Image → Image</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">UploadVideoNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">ExtractFrameNode</span>
+            <span class="ex-handle">(video)</span>
+            <span class="ex-reason">Video → Video</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">CropImageNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(images)</span>
+            <span class="ex-reason">Image → Image[]</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">ExtractFrameNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(images)</span>
+            <span class="ex-reason">Image → Image[]</span>
+          </div>
+          <div class="example-row example-valid">
+            <span class="ex-node">ExtractFrameNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">CropImageNode</span>
+            <span class="ex-handle">(image)</span>
+            <span class="ex-reason">Image → Image</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#7f1d1d;margin-bottom:0.5rem;">✕ Invalid</div>
+        <div class="example-grid">
+          <div class="example-row example-invalid">
+            <span class="ex-node">TextNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">CropImageNode</span>
+            <span class="ex-handle">(image)</span>
+            <span class="ex-reason-invalid">Text ≠ Image</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">TextNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">ExtractFrameNode</span>
+            <span class="ex-handle">(video)</span>
+            <span class="ex-reason-invalid">Text ≠ Video</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">UploadImageNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(user_message)</span>
+            <span class="ex-reason-invalid">Image ≠ Text</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">UploadImageNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">ExtractFrameNode</span>
+            <span class="ex-handle">(video)</span>
+            <span class="ex-reason-invalid">Image ≠ Video</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">UploadVideoNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">RunLLMNode</span>
+            <span class="ex-handle">(images)</span>
+            <span class="ex-reason-invalid">Video ≠ Image</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">UploadVideoNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">CropImageNode</span>
+            <span class="ex-handle">(image)</span>
+            <span class="ex-reason-invalid">Video ≠ Image</span>
+          </div>
+          <div class="example-row example-invalid">
+            <span class="ex-node">RunLLMNode</span>
+            <span class="example-arrow">→</span>
+            <span class="ex-node">CropImageNode</span>
+            <span class="ex-handle">(image)</span>
+            <span class="ex-reason-invalid">Text ≠ Image</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

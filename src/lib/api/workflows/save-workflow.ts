@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, type Prisma } from "@/lib/prisma";
 import { AppApiError } from "@/lib/errors";
 import type { SaveWorkflowInput } from "@/lib/zod/schemas/workflows";
 
@@ -42,7 +42,11 @@ export async function saveWorkflow(
 
     await prisma.workflow.update({
       where: { id: input.workflowId },
-      data:  { name: input.name, nodes: input.nodes, edges: input.edges },
+      data:  {
+        name:  input.name,
+        nodes: input.nodes as Prisma.InputJsonValue,
+        edges: input.edges as Prisma.InputJsonValue,
+      },
     });
 
     return { id: input.workflowId };
@@ -50,7 +54,12 @@ export async function saveWorkflow(
 
   // Create path — first save for this canvas session
   const workflow = await prisma.workflow.create({
-    data:   { name: input.name, userId, nodes: input.nodes, edges: input.edges },
+    data:   {
+      name:  input.name,
+      userId,
+      nodes: input.nodes as Prisma.InputJsonValue,
+      edges: input.edges as Prisma.InputJsonValue,
+    },
     select: { id: true },
   });
 

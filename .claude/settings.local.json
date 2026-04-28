@@ -7,7 +7,15 @@
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm install --save-dev dotenv)",
       "Bash(find \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\\\\node_modules\\\\@trigger.dev\\\\sdk\" -name \"*.d.ts\" | xargs grep -l \"useRealtimeRun\\\\|useRealtime\" 2>/dev/null | head -10)",
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && node -e \"const z = require\\('zod/v4'\\); console.log\\(z.ZodType ? 'zod/v4 ok' : 'no'\\)\" 2>&1 | head -5)",
-      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx prisma db push 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx prisma db push 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx shadcn@latest --version 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx shadcn@latest init --help 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx shadcn@latest init -y 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npx shadcn@latest init -y --base radix 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && rm src/middleware.ts)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm run build 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && node -e \"const t = require\\('transloadit'\\); console.log\\(Object.keys\\(t\\)\\)\" 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && rm -rf .next)"
     ]
   }
 }

@@ -1,5 +1,5 @@
 import { logger, task } from "@trigger.dev/sdk";
-import { Transloadit } from "transloadit";
+import { Transloadit, type AssemblyOptions } from "transloadit";
 
 const transloadit = new Transloadit({
   authKey: process.env.TRANSLOADIT_AUTH_KEY!,
@@ -20,7 +20,7 @@ export const uploadImageTask = task({
 
     logger.log("Starting image upload to Transloadit", { fileName });
 
-    const options: Transloadit.AssemblyOptions = {
+    const options: AssemblyOptions = {
       // Wait for all assembly steps to finish before returning,
       // so assembly.results is populated when we read it below.
       waitForCompletion: true,
@@ -47,7 +47,6 @@ export const uploadImageTask = task({
     if (assembly.error) {
       throw new Error(`Transloadit error: ${assembly.error} — ${assembly.message}`);
     }
-    console.log("Transloadit assembly completed",JSON.stringify(assembly));
     const uploaded = assembly.results?.[":original"]?.[0];
 
     if (!uploaded?.ssl_url) {
