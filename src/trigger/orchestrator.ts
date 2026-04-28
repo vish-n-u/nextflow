@@ -18,40 +18,51 @@ interface FlowEdge {
 type NodeStatus = "running" | "success" | "error";
 
 /**
- * Kahn's algorithm — returns execution levels instead of a flat list.
- * All nodes within a level have no dependencies on each other and can run in parallel.
+ * Backward-leveling — assigns each node a "depth from end":
+ *   terminal nodes (no outgoing edges) = depth 0
+ *   all others = max(successor depths) + 1
+ *
+ * Nodes are then grouped by depth and executed highest-depth-first,
+ * so every node runs as late as possible ("just in time" before its
+ * first successor needs it).  All nodes within a level are independent
+ * and run in parallel.
  */
 function buildLevels(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[][] {
-  const inDegree = new Map<string, number>();
-  const adj      = new Map<string, string[]>();
+  const nodeIds = new Set(nodes.map((n) => n.id));
 
-  for (const node of nodes) {
-    inDegree.set(node.id, 0);
-    adj.set(node.id, []);
-  }
-
+  // successors[id] = list of node IDs that this node feeds into
+  const successors = new Map<string, string[]>();
+  for (const node of nodes) successors.set(node.id, []);
   for (const edge of edges) {
-    adj.get(edge.source)?.push(edge.target);
-    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-  }
-
-  const levels: FlowNode[][] = [];
-  let current = nodes.filter((n) => inDegree.get(n.id) === 0);
-
-  while (current.length > 0) {
-    levels.push(current);
-    const next: FlowNode[] = [];
-    for (const node of current) {
-      for (const neighborId of adj.get(node.id) ?? []) {
-        const deg = (inDegree.get(neighborId) ?? 0) - 1;
-        inDegree.set(neighborId, deg);
-        if (deg === 0) next.push(nodes.find((n) => n.id === neighborId)!);
-      }
+    if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+      successors.get(edge.source)!.push(edge.target);
     }
-    current = next;
   }
 
-  return levels;
+  // Memoised depth-from-end (safe because the canvas enforces a DAG)
+  const cache = new Map<string, number>();
+  function depthOf(id: string): number {
+    if (cache.has(id)) return cache.get(id)!;
+    const succs = successors.get(id) ?? [];
+    const depth = succs.length === 0
+      ? 0
+      : Math.max(...succs.map(depthOf)) + 1;
+    cache.set(id, depth);
+    return depth;
+  }
+  for (const node of nodes) depthOf(node.id);
+
+  // Group by depth, sort descending so the deepest nodes execute first
+  const byDepth = new Map<number, FlowNode[]>();
+  for (const node of nodes) {
+    const d = cache.get(node.id)!;
+    if (!byDepth.has(d)) byDepth.set(d, []);
+    byDepth.get(d)!.push(node);
+  }
+
+  return Array.from(byDepth.entries())
+    .sort(([a], [b]) => b - a)   // highest depth → first level to run
+    .map(([, group]) => group);
 }
 
 // ── Node runner (one node per invocation — used for parallel batch execution) ─
