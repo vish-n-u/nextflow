@@ -3,10 +3,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import { runs, auth } from "@trigger.dev/sdk/v3";
-import { TopBar }      from "./TopBar";
-import { LeftBar }     from "./LeftBar";
-import { FlowCanvas }  from "./FlowCanvas";
-import { RightBar }    from "./RightBar";
+import { TopBar }           from "./TopBar";
+import { LeftBar }          from "./LeftBar";
+import { FlowCanvas }       from "./FlowCanvas";
+import { RightBar }         from "./RightBar";
+import { WorkflowsModal }   from "./WorkflowsModal";
 
 export function DashboardShell() {
   const [workflowName, setWorkflowName] = useState("");
@@ -28,7 +29,8 @@ export function DashboardShell() {
   const runWorkflowFnRef = useRef<
     (() => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) | null
   >(null);
-  const getSnapshotFnRef = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
+  const getSnapshotFnRef    = useRef<(() => { nodes: Node[]; edges: Edge[] }) | null>(null);
+  const loadWorkflowFnRef   = useRef<((nodes: Node[], edges: Edge[]) => void) | null>(null);
 
   const handleRegisterRunWorkflow = useCallback(
     (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => {
@@ -42,12 +44,28 @@ export function DashboardShell() {
     [],
   );
 
-  const [workflowStatus, setWorkflowStatus] = useState<"idle" | "running" | "success" | "error">("idle");
-  const [workflowRun,    setWorkflowRun]    = useState<{ runId: string; publicToken: string } | null>(null);
-  const [historyKey,     setHistoryKey]     = useState(0);
-  const [saveStatus,     setSaveStatus]     = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const handleRegisterLoadWorkflow = useCallback(
+    (fn: (nodes: Node[], edges: Edge[]) => void) => { loadWorkflowFnRef.current = fn; },
+    [],
+  );
+
+  const [workflowStatus,   setWorkflowStatus]   = useState<"idle" | "running" | "success" | "error">("idle");
+  const [workflowRun,      setWorkflowRun]      = useState<{ runId: string; publicToken: string } | null>(null);
+  const [historyKey,       setHistoryKey]       = useState(0);
+  const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [openModalVisible, setOpenModalVisible] = useState(false);
   const savedWorkflowIdRef = useRef<string | null>(null);
   const dbRunIdRef         = useRef<string | null>(null);
+
+  const handleLoad = useCallback((workflow: { id: string; name: string; nodes: unknown; edges: unknown }) => {
+    if (!loadWorkflowFnRef.current) return;
+    loadWorkflowFnRef.current(workflow.nodes as Node[], workflow.edges as Edge[]);
+    setWorkflowName(workflow.name);
+    savedWorkflowIdRef.current = workflow.id;
+    setWorkflowStatus("idle");
+    setWorkflowRun(null);
+    setOpenModalVisible(false);
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!getSnapshotFnRef.current || saveStatus === "saving") return;
@@ -106,7 +124,17 @@ export function DashboardShell() {
           triggerRunId: result.runId,
           workflowName: workflowName || "Untitled",
           scope:        "full",
-          nodes: result.nodes.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
+          nodes: result.nodes.map((n) => {
+            const data = n.data as Record<string, unknown>;
+            // Strip video binary from DB — fileBase64 can be MBs; execution already
+            // has it via the orchestrator payload so stripping here is safe.
+            if (n.type === "uploadVideoNode") {
+              const { fileBase64, previewUrl, ...rest } = data;
+              void fileBase64; void previewUrl;
+              return { id: n.id, type: n.type ?? "", data: rest };
+            }
+            return { id: n.id, type: n.type ?? "", data };
+          }),
           edges: result.edges.map((e) => ({
             source:       e.source,
             target:       e.target,
@@ -190,6 +218,7 @@ export function DashboardShell() {
   }, [workflowRun]);
 
   return (
+    <>
     <div className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
       <TopBar
         workflowName={workflowName}
@@ -198,6 +227,7 @@ export function DashboardShell() {
         onRunWorkflow={handleRunWorkflow}
         saveStatus={saveStatus}
         onSave={handleSave}
+        onOpenWorkflows={() => setOpenModalVisible(true)}
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
       />
@@ -213,6 +243,7 @@ export function DashboardShell() {
           onNodeSelect={setSelectedNode}
           onRegisterRunWorkflow={handleRegisterRunWorkflow}
           onRegisterGetSnapshot={handleRegisterGetSnapshot}
+          onRegisterLoadWorkflow={handleRegisterLoadWorkflow}
           workflowRun={workflowRun}
           isWorkflowRunning={workflowStatus === "running"}
         />
@@ -224,5 +255,13 @@ export function DashboardShell() {
         />
       </div>
     </div>
+
+    {openModalVisible && (
+      <WorkflowsModal
+        onLoad={handleLoad}
+        onClose={() => setOpenModalVisible(false)}
+      />
+    )}
+    </>
   );
 }

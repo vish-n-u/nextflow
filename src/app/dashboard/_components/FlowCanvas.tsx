@@ -17,6 +17,7 @@ import {
   type Edge,
   type Connection,
   type IsValidConnection,
+  type FitViewOptions,
 } from "@xyflow/react";
 
 import { runs, auth } from "@trigger.dev/sdk/v3";
@@ -67,14 +68,15 @@ interface FlowCanvasInnerProps {
   onNodeSelect: (node: Node | null) => void;
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
+  onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterLoadWorkflow, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const { screenToFlowPosition, getNode, updateNodeData } = useReactFlow();
+  const { screenToFlowPosition, getNode, updateNodeData, fitView } = useReactFlow();
 
   // Keep refs to latest state for the workflow-run fn and history saves
   const nodesRef = useRef(nodes);
@@ -215,6 +217,24 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     onRegisterGetSnapshot(getSnapshot);
   }, [getSnapshot, onRegisterGetSnapshot]);
 
+  // ── Load workflow ─────────────────────────────────────────────────────────────
+  const loadWorkflow = useCallback(
+    (incomingNodes: Node[], incomingEdges: Edge[]) => {
+      setNodes(incomingNodes);
+      setEdges(incomingEdges);
+      // Reset undo/redo history so the loaded state is the new baseline
+      history.current   = [{ nodes: incomingNodes, edges: incomingEdges }];
+      historyIdx.current = 0;
+      // Fit view after React re-renders with the new nodes
+      requestAnimationFrame(() => fitView({ padding: 0.15 } as FitViewOptions));
+    },
+    [setNodes, setEdges, fitView],
+  );
+
+  useEffect(() => {
+    onRegisterLoadWorkflow(loadWorkflow);
+  }, [loadWorkflow, onRegisterLoadWorkflow]);
+
   // ── Workflow node-status glows ───────────────────────────────────────────────
   useEffect(() => {
     if (!workflowRun) return;
@@ -315,6 +335,7 @@ interface FlowCanvasProps {
   onNodeSelect: (node: Node | null) => void;
   onRegisterRunWorkflow: (fn: () => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => void;
   onRegisterGetSnapshot: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
+  onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
 }
