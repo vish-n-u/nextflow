@@ -54,17 +54,28 @@ export function DashboardShell() {
   const [historyKey,       setHistoryKey]       = useState(0);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openModalVisible, setOpenModalVisible] = useState(false);
-  const savedWorkflowIdRef = useRef<string | null>(null);
-  const dbRunIdRef         = useRef<string | null>(null);
+  const STORAGE_KEY = "nextflow:activeWorkflowId";
+  const savedWorkflowIdRef = useRef<string | null>(
+    typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null,
+  );
+  const dbRunIdRef = useRef<string | null>(null);
+
+  // Keep localStorage in sync with the ref
+  const setActiveWorkflowId = (id: string | null) => {
+    savedWorkflowIdRef.current = id;
+    if (id) localStorage.setItem(STORAGE_KEY, id);
+    else     localStorage.removeItem(STORAGE_KEY);
+  };
 
   const handleLoad = useCallback((workflow: { id: string; name: string; nodes: unknown; edges: unknown }) => {
-    if (!loadWorkflowFnRef.current) return;
-    loadWorkflowFnRef.current(workflow.nodes as Node[], workflow.edges as Edge[]);
+    // Always record the active workflow ID first — even if the canvas fn isn't
+    // registered yet, subsequent saves must target this workflow.
+    setActiveWorkflowId(workflow.id);
     setWorkflowName(workflow.name);
-    savedWorkflowIdRef.current = workflow.id;
     setWorkflowStatus("idle");
     setWorkflowRun(null);
     setOpenModalVisible(false);
+    loadWorkflowFnRef.current?.(workflow.nodes as Node[], workflow.edges as Edge[]);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -102,7 +113,7 @@ export function DashboardShell() {
       });
       if (!res.ok) throw new Error("Save failed");
       const { id } = await res.json() as { id: string };
-      savedWorkflowIdRef.current = id;
+      setActiveWorkflowId(id);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
@@ -126,6 +137,7 @@ export function DashboardShell() {
           triggerRunId: result.runId,
           workflowName: workflowName || "Untitled",
           scope:        "full",
+          workflowId:   savedWorkflowIdRef.current ?? undefined,
           nodes: result.nodes.map((n) => {
             const data = n.data as Record<string, unknown>;
             // Strip video binary from DB — fileBase64 can be MBs; execution already

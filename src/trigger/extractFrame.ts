@@ -16,24 +16,16 @@ export const extractFrameTask = task({
 
     logger.log("Extracting frame via Transloadit", { video_url, timestamp });
 
-    // Transloadit /video/thumbs:
-    //   offsets  — array of integers (seconds)
-    //   positions — array of percentage strings e.g. ["50%"]
-    const isPercent = timestamp.trim().endsWith("%");
+    // Timestamp is always a percentage (0–100). Clamp to valid range.
+    const pct = Math.min(100, Math.max(0, parseFloat(timestamp) || 0));
     const thumbStep: Record<string, unknown> = {
-      robot:  "/video/thumbs",
-      use:    "imported",
-      count:  1,
-      result: true,
-      format: "jpg",
+      robot:     "/video/thumbs",
+      use:       "imported",
+      count:     1,
+      result:    true,
+      format:    "jpg",
+      positions: [`${pct}%`],
     };
-
-    if (isPercent) {
-      thumbStep.positions = [timestamp.trim()];
-    } else {
-      const seconds = parseFloat(timestamp);
-      thumbStep.offsets = [isNaN(seconds) ? 0 : Math.floor(seconds)];
-    }
 
     const assembly = await transloadit.createAssembly({
       waitForCompletion: true,

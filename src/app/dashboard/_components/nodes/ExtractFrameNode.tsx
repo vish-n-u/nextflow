@@ -107,10 +107,10 @@ export function ExtractFrameNode({ id, data, selected }: NodeProps<ExtractFrameN
 
         <div className="relative">
           <Handle type="target" position={Position.Left} id="timestamp" className={TGT} />
-          <label className={labelCls}>Timestamp</label>
+          <label className={labelCls}>Timestamp <span className="text-zinc-600 normal-case">(%)</span></label>
           {timestampConns.length > 0
             ? <p className={connectedCls}>Receiving from connection…</p>
-            : <input type="text" placeholder="e.g. 5 or 50%"
+            : <input type="number" min={0} max={100} placeholder="e.g. 50"
                 value={data.timestamp ?? ""}
                 onChange={(e) => updateNodeData(id, { timestamp: e.target.value })}
                 disabled={locked}

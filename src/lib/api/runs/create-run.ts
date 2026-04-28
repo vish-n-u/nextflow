@@ -22,15 +22,9 @@ export async function createRun(input: CreateRunInput, userId: string): Promise<
     create: { id: userId },
   });
 
-  // Single-node runs have no workflow context — skip workflow creation
-  let workflowId: string | undefined;
-  if (input.scope !== "single") {
-    const workflow = await prisma.workflow.create({
-      data:   { name: input.workflowName, userId, nodes: input.nodes, edges: input.edges },
-      select: { id: true },
-    });
-    workflowId = workflow.id;
-  }
+  // Link this run to the existing saved workflow if provided.
+  // Single-node runs have no workflow context, so workflowId stays undefined.
+  const workflowId = input.scope !== "single" ? (input.workflowId ?? undefined) : undefined;
 
   const run = await prisma.run.create({
     data: {

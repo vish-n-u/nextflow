@@ -19,6 +19,7 @@ export const createRunSchema = z.object({
   triggerRunId: z.string().describe("Trigger.dev run ID"),
   workflowName: z.string().default("Untitled").describe("Workflow display name"),
   scope:        z.enum(["full", "partial", "single"]).describe("Execution scope"),
+  workflowId:   z.string().optional().describe("Existing saved workflow ID to link this run to"),
   nodes:        z.array(nodeSchema).describe("Canvas nodes at run time"),
   edges:        z.array(edgeSchema).describe("Canvas edges at run time"),
 });
