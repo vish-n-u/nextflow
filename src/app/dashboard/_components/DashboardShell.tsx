@@ -92,8 +92,10 @@ export function DashboardShell() {
             return { id: n.id, type: n.type ?? "", data: configData, position: n.position };
           }),
           edges: edges.map((e) => ({
+            id:           e.id,
             source:       e.source,
             target:       e.target,
+            sourceHandle: e.sourceHandle ?? null,
             targetHandle: e.targetHandle ?? "",
           })),
         }),
@@ -136,8 +138,10 @@ export function DashboardShell() {
             return { id: n.id, type: n.type ?? "", data };
           }),
           edges: result.edges.map((e) => ({
+            id:           e.id,
             source:       e.source,
             target:       e.target,
+            sourceHandle: e.sourceHandle ?? null,
             targetHandle: e.targetHandle ?? "",
           })),
         }),

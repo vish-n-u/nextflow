@@ -1,14 +1,17 @@
 import * as z from "zod/v4";
 
 export const nodeSchema = z.object({
-  id:   z.string().describe("React Flow node ID"),
-  type: z.string().describe("Node type key"),
-  data: z.record(z.string(), z.unknown()).describe("Node data snapshot at run time"),
+  id:       z.string().describe("React Flow node ID"),
+  type:     z.string().describe("Node type key"),
+  data:     z.record(z.string(), z.unknown()).describe("Node data snapshot at run time"),
+  position: z.object({ x: z.number(), y: z.number() }).optional().describe("Canvas position"),
 });
 
 export const edgeSchema = z.object({
+  id:           z.string().optional().describe("React Flow edge ID"),
   source:       z.string().describe("Source node ID"),
   target:       z.string().describe("Target node ID"),
+  sourceHandle: z.string().nullable().optional().describe("Source handle ID"),
   targetHandle: z.string().describe("Target handle ID"),
 });
 

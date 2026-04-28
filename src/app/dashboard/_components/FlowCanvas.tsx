@@ -195,7 +195,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         nodeType: "orchestrator",
         data: {
           nodes: nodesRef.current.map((n) => ({ id: n.id, type: n.type ?? "", data: n.data })),
-          edges: edgesRef.current.map((e) => ({ source: e.source, target: e.target, targetHandle: e.targetHandle ?? "" })),
+          edges: edgesRef.current.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? "" })),
         },
       }),
     });
@@ -220,10 +220,20 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
   // ── Load workflow ─────────────────────────────────────────────────────────────
   const loadWorkflow = useCallback(
     (incomingNodes: Node[], incomingEdges: Edge[]) => {
-      setNodes(incomingNodes);
-      setEdges(incomingEdges);
+      // Guard: nodes saved before position was persisted may lack a position field.
+      // Spread them in a grid so ReactFlow doesn't crash on undefined x/y.
+      const safeNodes = incomingNodes.map((n, i) => ({
+        ...n,
+        position: n.position ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
+      }));
+      const safeEdges = incomingEdges.map((e, i) => ({
+        ...e,
+        id: e.id ?? `edge-restored-${i}`,
+      }));
+      setNodes(safeNodes);
+      setEdges(safeEdges);
       // Reset undo/redo history so the loaded state is the new baseline
-      history.current   = [{ nodes: incomingNodes, edges: incomingEdges }];
+      history.current   = [{ nodes: safeNodes, edges: safeEdges }];
       historyIdx.current = 0;
       // Fit view after React re-renders with the new nodes
       requestAnimationFrame(() => fitView({ padding: 0.15 } as FitViewOptions));
