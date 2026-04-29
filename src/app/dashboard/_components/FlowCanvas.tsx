@@ -133,8 +133,9 @@ function ToolBtn({ icon: Icon, active, onClick, title }: { icon: LucideIcon; act
 const SHORTCUTS = [
   { key: "S",              label: "Select mode" },
   { key: "H",              label: "Pan mode" },
+  { key: "Ctrl+S",         label: "Save" },
   { key: "Ctrl+Z",         label: "Undo" },
-  { key: "Ctrl+Shift+Z",   label: "Redo" },
+  { key: "Ctrl+Y",         label: "Redo" },
   { key: "Delete / ⌫",    label: "Delete nodes" },
 ];
 

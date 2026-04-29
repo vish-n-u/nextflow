@@ -88,24 +88,24 @@ function NodeRunRow({ node }: { node: NodeRunResponse }) {
       </button>
 
       {open && (
-        <div className="px-2.5 pb-2.5 pt-1.5 bg-zinc-950 flex flex-col gap-2">
+        <div className="px-2.5 pb-2.5 pt-1.5 bg-zinc-950 flex flex-col gap-2 min-w-0 overflow-hidden">
           {node.error && (
-            <p className="text-[10px] text-red-400 bg-red-950/30 border border-red-500/20 rounded px-2 py-1.5 leading-relaxed">
+            <p className="text-[10px] text-red-400 bg-red-950/30 border border-red-500/20 rounded px-2 py-1.5 leading-relaxed break-all">
               {node.error}
             </p>
           )}
           {node.input != null && (
-            <div>
+            <div className="min-w-0">
               <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1">Input</p>
-              <pre className="text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+              <pre className="text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed max-w-full">
                 {JSON.stringify(node.input, null, 2)}
               </pre>
             </div>
           )}
           {node.output != null && (
-            <div>
+            <div className="min-w-0">
               <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1">Output</p>
-              <pre className="text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+              <pre className="text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed max-w-full">
                 {JSON.stringify(node.output, null, 2)}
               </pre>
             </div>
@@ -143,7 +143,7 @@ function RunRow({ run }: { run: RunResponse }) {
       </button>
 
       {open && run.nodeRuns.length > 0 && (
-        <div className="px-2.5 pb-2.5 pt-1 bg-zinc-950 flex flex-col gap-1.5">
+        <div className="px-2.5 pb-2.5 pt-1 bg-zinc-950 flex flex-col gap-1.5 overflow-hidden">
           {run.nodeRuns.map((n) => (
             <NodeRunRow key={n.id} node={n} />
           ))}
@@ -255,8 +255,8 @@ function PropertiesTab({ selectedNode }: { selectedNode: Node | null }) {
 
       <div>
         <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-2">Data</p>
-        <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
-          <pre className="text-xs text-zinc-400 whitespace-pre-wrap break-all font-mono leading-relaxed">
+        <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 overflow-x-auto">
+          <pre className="text-xs text-zinc-400 whitespace-pre-wrap break-all font-mono leading-relaxed max-w-full">
             {JSON.stringify(selectedNode.data, null, 2)}
           </pre>
         </div>
@@ -314,7 +314,7 @@ export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps
           md:static md:top-auto md:bottom-auto md:z-auto md:shrink-0
           md:translate-x-0
           ${isOpen ? "translate-x-0" : "translate-x-full"}
-          ${collapsed ? "md:w-12 w-72" : "md:w-64 w-72"}
+          ${collapsed ? "md:w-12 w-[min(18rem,90vw)]" : "md:w-64 w-[min(18rem,90vw)]"}
         `}
       >
         {/* ── Collapsed strip (desktop only) ── */}
@@ -415,13 +415,13 @@ export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps
 
           {/* Content */}
           <TabsContent value="history" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full">
-              <div className="p-3"><HistoryTab /></div>
+            <ScrollArea className="h-full w-full">
+              <div className="p-3 min-w-0 max-w-full overflow-x-hidden"><HistoryTab /></div>
             </ScrollArea>
           </TabsContent>
           <TabsContent value="properties" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full">
-              <div className="p-3"><PropertiesTab selectedNode={selectedNode} /></div>
+            <ScrollArea className="h-full w-full">
+              <div className="p-3 min-w-0 max-w-full overflow-x-hidden"><PropertiesTab selectedNode={selectedNode} /></div>
             </ScrollArea>
           </TabsContent>
         </Tabs>

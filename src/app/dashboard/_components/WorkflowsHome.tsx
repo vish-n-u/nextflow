@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Plus, RefreshCw, Search, Grid2X2, ChevronDown } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
-import Image from "next/image";
+import type { NodePreview, EdgePreview } from "@/lib/api/workflows";
+import { NODE_EDGE_COLORS, DEFAULT_EDGE_COLOR } from "@/lib/nodeColors";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -17,32 +18,116 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// ── Workflow SVG preview ──────────────────────────────────────────────────────
+
+const NODE_W  = 54;
+const NODE_H  = 28;
+const VW      = 400;
+const VH      = 280;
+const PAD     = 48;
+
+function WorkflowPreviewSvg({ nodes, edges }: { nodes: NodePreview[]; edges: EdgePreview[] }) {
+  if (nodes.length === 0) {
+    return (
+      <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full h-full">
+        <text x={VW / 2} y={VH / 2} textAnchor="middle" dominantBaseline="middle"
+          fill="#333" fontSize="13" fontFamily="sans-serif">
+          Empty workflow
+        </text>
+      </svg>
+    );
+  }
+
+  const xs   = nodes.map((n) => n.position.x);
+  const ys   = nodes.map((n) => n.position.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const rangeX = (Math.max(...xs) - minX) || 1;
+  const rangeY = (Math.max(...ys) - minY) || 1;
+
+  const scaleX = (VW - PAD * 2 - NODE_W) / rangeX;
+  const scaleY = (VH - PAD * 2 - NODE_H) / rangeY;
+  const scale  = Math.min(scaleX, scaleY);
+
+  const scaledW = rangeX * scale + NODE_W;
+  const scaledH = rangeY * scale + NODE_H;
+  const offX    = (VW - scaledW) / 2;
+  const offY    = (VH - scaledH) / 2;
+
+  const tx = (x: number) => (x - minX) * scale + offX;
+  const ty = (y: number) => (y - minY) * scale + offY;
+
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  return (
+    <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full h-full">
+      {/* Edges */}
+      {edges.map((e, i) => {
+        const src = nodeMap.get(e.source);
+        const tgt = nodeMap.get(e.target);
+        if (!src || !tgt) return null;
+
+        const x1   = tx(src.position.x) + NODE_W;
+        const y1   = ty(src.position.y) + NODE_H / 2;
+        const x2   = tx(tgt.position.x);
+        const y2   = ty(tgt.position.y) + NODE_H / 2;
+        const cp   = Math.abs(x2 - x1) * 0.45 + 10;
+        const color = NODE_EDGE_COLORS[src.type] ?? DEFAULT_EDGE_COLOR;
+
+        return (
+          <path
+            key={i}
+            d={`M ${x1},${y1} C ${x1 + cp},${y1} ${x2 - cp},${y2} ${x2},${y2}`}
+            stroke={color}
+            strokeWidth="1.5"
+            strokeOpacity="0.45"
+            fill="none"
+          />
+        );
+      })}
+
+      {/* Nodes */}
+      {nodes.map((n) => {
+        const x     = tx(n.position.x);
+        const y     = ty(n.position.y);
+        const color = NODE_EDGE_COLORS[n.type] ?? DEFAULT_EDGE_COLOR;
+        return (
+          <rect
+            key={n.id}
+            x={x} y={y}
+            width={NODE_W} height={NODE_H}
+            rx={6}
+            fill={color}        fillOpacity={0.1}
+            stroke={color}      strokeOpacity={0.35}
+            strokeWidth={1}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 // ── WorkflowCard ─────────────────────────────────────────────────────────────
 
-function WorkflowCard({ id, name, updatedAt }: {
+function WorkflowCard({ id, name, updatedAt, previewNodes, previewEdges }: {
   id: string; name: string; updatedAt: string;
+  previewNodes: NodePreview[]; previewEdges: EdgePreview[];
 }) {
   return (
-    
-<Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
-  {/* Thumbnail */}
-  <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors relative">
-    <Image
-      src="https://community.n8n.io/uploads/default/original/3X/4/6/4661c2d0d17bf907d1968359d1d6e53fbe79a1a8.png"
-      alt="Workflow thumbnail"
-      fill
-      className="object-cover"
-    />
-  </div>
+    <Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
+      {/* Thumbnail */}
+      <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors">
+        <WorkflowPreviewSvg nodes={previewNodes} edges={previewEdges} />
+      </div>
 
-  {/* Info */}
-  <div>
-    <p className="text-[13px] text-white font-book truncate">{name}</p>
-    <p className="text-[11px] text-[#666] font-book mt-0.5">
-      {formatTime(updatedAt)}
-    </p>
-  </div>
-</Link>
+      {/* Info */}
+      <div>
+        <p className="text-[13px] text-white font-book truncate">{name}</p>
+        <p className="text-[11px] text-[#666] font-book mt-0.5">
+          {formatTime(updatedAt)}
+        </p>
+      </div>
+    </Link>
   );
 }
 
@@ -211,6 +296,8 @@ export function WorkflowsHome() {
               id={wf.id}
               name={wf.name}
               updatedAt={wf.updatedAt}
+              previewNodes={wf.previewNodes}
+              previewEdges={wf.previewEdges}
             />
           ))}
         </div>
