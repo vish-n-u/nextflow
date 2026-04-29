@@ -1,10 +1,6 @@
+import { getTransloadit } from "@/lib/translodit";
 import { logger, task } from "@trigger.dev/sdk";
-import { Transloadit } from "transloadit";
 
-const transloadit = new Transloadit({
-  authKey:    process.env.TRANSLOADIT_AUTH_KEY!,
-  authSecret: process.env.TRANSLOADIT_AUTH_SECRET!,
-});
 
 export const uploadVideoTask = task({
   id: "upload-video",
@@ -13,6 +9,7 @@ export const uploadVideoTask = task({
   },
   run: async (payload: { tempUrl?: string; fileBase64?: string; fileName?: string }) => {
     const { tempUrl, fileBase64, fileName = "upload.mp4" } = payload;
+    const transloadit = getTransloadit();
 
     if (!tempUrl && !fileBase64) {
       throw new Error("Either tempUrl or fileBase64 must be provided");

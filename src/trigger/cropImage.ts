@@ -5,14 +5,10 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { writeFile, readFile, unlink } from "fs/promises";
 import { randomUUID } from "crypto";
-import { Transloadit } from "transloadit";
+import { getTransloadit } from "@/lib/translodit";
 
 const execFileAsync = promisify(execFile);
 
-const transloadit = new Transloadit({
-  authKey:    process.env.TRANSLOADIT_AUTH_KEY!,
-  authSecret: process.env.TRANSLOADIT_AUTH_SECRET!,
-});
 
 export const cropImageTask = task({
   id: "crop-image",
@@ -66,7 +62,7 @@ export const cropImageTask = task({
       ]);
 
       // 3. Upload the cropped image to Transloadit for CDN-hosted URL
-      const assembly = await transloadit.createAssembly({
+      const assembly = await getTransloadit().createAssembly({
         waitForCompletion: true,
         uploads: { file: await readFile(outputPath) },
         params: {
