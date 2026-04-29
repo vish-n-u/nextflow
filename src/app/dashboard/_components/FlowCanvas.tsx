@@ -97,7 +97,7 @@ function SelectionOverlay({ onRun }: { onRun: () => void }) {
         <div className="pointer-events-auto absolute -top-9 left-0">
           <button
             onClick={onRun}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg transition-colors"
+            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white text-[12px] font-book px-3 py-1.5 rounded-full shadow-lg transition-colors"
           >
             <Play className="w-3 h-3 fill-current" />
             Run ({selected.length})
@@ -117,10 +117,10 @@ function ToolBtn({ icon: Icon, active, onClick, title }: { icon: LucideIcon; act
     <button
       onClick={onClick}
       title={title}
-      className={`p-2 rounded-lg transition-colors ${
+      className={`p-2 rounded-xl transition-colors ${
         active
-          ? "bg-zinc-700 text-white"
-          : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+          ? "bg-white/10 text-white"
+          : "text-[#666] hover:text-white hover:bg-white/[0.06]"
       }`}
     >
       <Icon className="w-4 h-4" />
@@ -147,11 +147,11 @@ function BottomToolbar({ mode, onModeChange }: { mode: CanvasMode; onModeChange:
           onClick={() => setShowShortcuts(false)}
         >
           <div
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-2xl w-72"
+            className="bg-[#1c1c1c] border border-white/[0.08] rounded-2xl p-5 shadow-2xl w-72"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-zinc-200">Keyboard Shortcuts</h3>
+              <h3 className="text-[13px] font-book font-medium text-white">Keyboard Shortcuts</h3>
               <button
                 onClick={() => setShowShortcuts(false)}
                 className="text-zinc-600 hover:text-zinc-300 transition-colors text-xl leading-none"
@@ -162,8 +162,8 @@ function BottomToolbar({ mode, onModeChange }: { mode: CanvasMode; onModeChange:
             <div className="flex flex-col gap-3">
               {SHORTCUTS.map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">{label}</span>
-                  <kbd className="text-[10px] font-mono bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 shrink-0">
+                  <span className="text-[12px] text-[#888] font-book">{label}</span>
+                  <kbd className="text-[10px] font-book bg-[#1c1c1c] border border-white/[0.1] rounded-lg px-2 py-0.5 text-[#ccc] shrink-0">
                     {key}
                   </kbd>
                 </div>
@@ -173,14 +173,14 @@ function BottomToolbar({ mode, onModeChange }: { mode: CanvasMode; onModeChange:
         </div>
       )}
       <Panel position="bottom-center" style={{ marginBottom: "1rem" }}>
-        <div className="flex items-center gap-0.5 bg-zinc-900/95 backdrop-blur-sm border border-zinc-800 rounded-2xl px-2 py-1.5 shadow-2xl">
+        <div className="flex items-center gap-0.5 bg-[#1a1a1a]/95 backdrop-blur-sm border border-white/[0.08] rounded-2xl px-2 py-1.5 shadow-2xl">
           <ToolBtn icon={MousePointer2} active={mode === "select"} onClick={() => onModeChange("select")} title="Select  (S)" />
           <ToolBtn icon={Hand}          active={mode === "pan"}    onClick={() => onModeChange("pan")}    title="Pan  (H)" />
-          <div className="w-px h-5 bg-zinc-700 mx-1.5" />
+          <div className="w-px h-5 bg-white/[0.1] mx-1.5" />
           <ToolBtn icon={ZoomIn}    onClick={() => zoomIn()}                                   title="Zoom In" />
           <ToolBtn icon={ZoomOut}   onClick={() => zoomOut()}                                  title="Zoom Out" />
           <ToolBtn icon={Maximize2} onClick={() => fitView({ padding: 0.15 } as FitViewOptions)} title="Fit View" />
-          <div className="w-px h-5 bg-zinc-700 mx-1.5" />
+          <div className="w-px h-5 bg-white/[0.1] mx-1.5" />
           <ToolBtn icon={Keyboard} active={showShortcuts} onClick={() => setShowShortcuts((v) => !v)} title="Shortcuts  (?)" />
         </div>
       </Panel>
