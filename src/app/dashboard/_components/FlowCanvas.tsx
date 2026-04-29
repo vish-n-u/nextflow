@@ -448,7 +448,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
             }
             updateNodeData(nodeId, update);
 
-            // Pulsate incoming edges when node is running, restore when done
+            // Animate incoming edges when node is running, restore when done
             setEdges((eds) => eds.map((e) => {
               if (e.target !== nodeId) return e;
               if (status === "running") {
@@ -456,11 +456,12 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
                   ?? getEdgeColor(nodesRef.current.find((n) => n.id === e.source)?.type ?? "");
                 return {
                   ...e,
+                  animated: true,
                   className: "edge-pulsing",
                   style: { ...e.style, "--edge-glow": glowColor } as React.CSSProperties,
                 };
               }
-              return { ...e, className: undefined };
+              return { ...e, animated: false, className: undefined };
             }));
           }
         }
