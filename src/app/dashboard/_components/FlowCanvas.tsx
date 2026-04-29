@@ -1,7 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -23,7 +23,8 @@ import {
   type OnSelectionChangeParams,
 } from "@xyflow/react";
 
-import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, type LucideIcon } from "lucide-react";
+import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, type LucideIcon } from "lucide-react";
+import { getEdgeColor } from "@/lib/nodeColors";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
 import { getNodeMeta } from "@/lib/nodeRegistry";
@@ -126,19 +127,63 @@ function ToolBtn({ icon: Icon, active, onClick, title }: { icon: LucideIcon; act
   );
 }
 
+const SHORTCUTS = [
+  { key: "S",              label: "Select mode" },
+  { key: "H",              label: "Pan mode" },
+  { key: "Ctrl+Z",         label: "Undo" },
+  { key: "Ctrl+Shift+Z",   label: "Redo" },
+  { key: "Delete / ⌫",    label: "Delete nodes" },
+];
+
 function BottomToolbar({ mode, onModeChange }: { mode: CanvasMode; onModeChange: (m: CanvasMode) => void }) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const [showShortcuts, setShowShortcuts] = useState(false);
   return (
-    <Panel position="bottom-center" style={{ marginBottom: "1rem" }}>
-      <div className="flex items-center gap-0.5 bg-zinc-900/95 backdrop-blur-sm border border-zinc-800 rounded-2xl px-2 py-1.5 shadow-2xl">
-        <ToolBtn icon={MousePointer2} active={mode === "select"} onClick={() => onModeChange("select")} title="Select  (S)" />
-        <ToolBtn icon={Hand}          active={mode === "pan"}    onClick={() => onModeChange("pan")}    title="Pan  (H)" />
-        <div className="w-px h-5 bg-zinc-700 mx-1.5" />
-        <ToolBtn icon={ZoomIn}   onClick={() => zoomIn()}                              title="Zoom In" />
-        <ToolBtn icon={ZoomOut}  onClick={() => zoomOut()}                             title="Zoom Out" />
-        <ToolBtn icon={Maximize2} onClick={() => fitView({ padding: 0.15 } as FitViewOptions)} title="Fit View" />
-      </div>
-    </Panel>
+    <>
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-2xl w-72"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-200">Keyboard Shortcuts</h3>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="text-zinc-600 hover:text-zinc-300 transition-colors text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {SHORTCUTS.map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-xs text-zinc-400">{label}</span>
+                  <kbd className="text-[10px] font-mono bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 shrink-0">
+                    {key}
+                  </kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      <Panel position="bottom-center" style={{ marginBottom: "1rem" }}>
+        <div className="flex items-center gap-0.5 bg-zinc-900/95 backdrop-blur-sm border border-zinc-800 rounded-2xl px-2 py-1.5 shadow-2xl">
+          <ToolBtn icon={MousePointer2} active={mode === "select"} onClick={() => onModeChange("select")} title="Select  (S)" />
+          <ToolBtn icon={Hand}          active={mode === "pan"}    onClick={() => onModeChange("pan")}    title="Pan  (H)" />
+          <div className="w-px h-5 bg-zinc-700 mx-1.5" />
+          <ToolBtn icon={ZoomIn}    onClick={() => zoomIn()}                                   title="Zoom In" />
+          <ToolBtn icon={ZoomOut}   onClick={() => zoomOut()}                                  title="Zoom Out" />
+          <ToolBtn icon={Maximize2} onClick={() => fitView({ padding: 0.15 } as FitViewOptions)} title="Fit View" />
+          <div className="w-px h-5 bg-zinc-700 mx-1.5" />
+          <ToolBtn icon={Keyboard} active={showShortcuts} onClick={() => setShowShortcuts((v) => !v)} title="Shortcuts  (?)" />
+        </div>
+      </Panel>
+    </>
   );
 }
 
@@ -277,9 +322,16 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
 
   // ── Edge connect ─────────────────────────────────────────────────────────────
   const onConnect = useCallback(
-    (params: Connection) =>
-      setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
-    [setEdges],
+    (params: Connection) => {
+      const srcNode = getNode(params.source);
+      const color = getEdgeColor(srcNode?.type ?? "");
+      setEdges((eds) => addEdge({
+        ...params,
+        animated: false,
+        style: { stroke: color, strokeWidth: 1.5 },
+      }, eds));
+    },
+    [setEdges, getNode],
   );
 
   // ── Workflow run ─────────────────────────────────────────────────────────────
@@ -350,9 +402,12 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         ...n,
         position: n.position ?? { x: (i % 4) * 220, y: Math.floor(i / 4) * 160 },
       }));
+      const nodeTypeMap = new Map(safeNodes.map((n) => [n.id, n.type ?? ""]));
       const safeEdges = incomingEdges.map((e, i) => ({
         ...e,
         id: e.id ?? `edge-restored-${i}`,
+        animated: false,
+        style: { stroke: getEdgeColor(nodeTypeMap.get(e.source) ?? ""), strokeWidth: 1.5 },
       }));
       setNodes(safeNodes);
       setEdges(safeEdges);
@@ -392,6 +447,21 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
               update.output = nodeOutputs[nodeId];
             }
             updateNodeData(nodeId, update);
+
+            // Pulsate incoming edges when node is running, restore when done
+            setEdges((eds) => eds.map((e) => {
+              if (e.target !== nodeId) return e;
+              if (status === "running") {
+                const glowColor = (e.style?.stroke as string | undefined)
+                  ?? getEdgeColor(nodesRef.current.find((n) => n.id === e.source)?.type ?? "");
+                return {
+                  ...e,
+                  className: "edge-pulsing",
+                  style: { ...e.style, "--edge-glow": glowColor } as React.CSSProperties,
+                };
+              }
+              return { ...e, className: undefined };
+            }));
           }
         }
         if (run.isCompleted || run.isFailed) break;
@@ -399,7 +469,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
     });
 
     return () => { mounted = false; };
-  }, [workflowRun, updateNodeData]);
+  }, [workflowRun, updateNodeData, setEdges]);
 
   // ── Drag-and-drop from sidebar ───────────────────────────────────────────────
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -433,7 +503,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         onPaneClick={() => onNodeSelect(null)}
         onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
-        defaultEdgeOptions={{ animated: true }}
+        defaultEdgeOptions={{ animated: false }}
         deleteKeyCode={["Backspace", "Delete"]}
         colorMode="dark"
         fitView={false}
