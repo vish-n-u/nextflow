@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, RefreshCw, Search, Layers } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,6 +88,15 @@ export function WorkflowsHome() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-10 flex items-center justify-between px-6 md:px-10 h-14 bg-zinc-950/80 backdrop-blur-sm border-b border-zinc-800">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Layers className="w-4 h-4 text-white" />
+          <span className="text-sm font-semibold text-white tracking-tight">NextFlow</span>
+        </Link>
+        <UserButton />
+      </header>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-zinc-950 border-b border-zinc-800/60">
