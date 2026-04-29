@@ -2,26 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Search, Layers } from "lucide-react";
+import { Plus, RefreshCw, Search, Grid2X2, ChevronDown } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const GRADIENTS = [
-  "from-indigo-950 to-violet-900",
-  "from-blue-950 to-cyan-900",
-  "from-emerald-950 to-teal-900",
-  "from-orange-950 to-amber-900",
-  "from-rose-950 to-pink-900",
-  "from-fuchsia-950 to-purple-900",
-];
-
-function gradientFor(id: string): string {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffffffff;
-  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
-}
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -33,43 +18,26 @@ function formatTime(iso: string): string {
 
 // ── WorkflowCard ─────────────────────────────────────────────────────────────
 
-function WorkflowCard({ id, name, nodeCount, updatedAt }: {
-  id: string; name: string; nodeCount: number; updatedAt: string;
+function WorkflowCard({ id, name, updatedAt }: {
+  id: string; name: string; updatedAt: string;
 }) {
   return (
-    <Link
-      href={`/dashboard/${id}`}
-      className="group flex flex-col rounded-2xl border border-zinc-800 hover:border-zinc-600 overflow-hidden bg-zinc-900 hover:bg-zinc-800/60 transition-all text-left w-full"
-    >
+    <Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
       {/* Thumbnail */}
-      <div className={`bg-gradient-to-br ${gradientFor(id)} relative h-36 overflow-hidden`}>
-        {/* Mini nodes mock */}
-        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-20 group-hover:opacity-40 transition-opacity">
-          {Array.from({ length: Math.min(nodeCount, 3) }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
-              <div className="w-10 h-2 rounded bg-white/40" />
-              <div className="w-7 h-2 rounded bg-white/20" />
-              <div className="w-9 h-2 rounded bg-white/30" />
-            </div>
-          ))}
-        </div>
-        {/* Faint connecting lines */}
-        <svg className="absolute inset-0 w-full h-full opacity-10 group-hover:opacity-20 transition-opacity" xmlns="http://www.w3.org/2000/svg">
-          <line x1="30%" y1="50%" x2="70%" y2="50%" stroke="white" strokeWidth="1" strokeDasharray="4 4" />
-        </svg>
-      </div>
+      <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors" />
       {/* Info */}
-      <div className="px-3 py-2.5">
-        <p className="text-sm font-medium text-zinc-200 group-hover:text-white truncate transition-colors">
-          {name}
-        </p>
-        <p className="text-[10px] text-zinc-600 mt-0.5">
-          {nodeCount} {nodeCount === 1 ? "node" : "nodes"} · {formatTime(updatedAt)}
-        </p>
+      <div>
+        <p className="text-[13px] text-white font-book truncate">{name}</p>
+        <p className="text-[11px] text-[#666] font-book mt-0.5">{formatTime(updatedAt)}</p>
       </div>
     </Link>
   );
 }
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+const TABS = ["Projects", "Apps", "Examples", "Templates"] as const;
+type Tab = typeof TABS[number];
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
@@ -78,7 +46,9 @@ export function WorkflowsHome() {
     workflows, hasMore, loading, loadingMore, error,
     fetch: loadWorkflows, fetchMore,
   } = useWorkflowsStore();
-  const [search, setSearch] = useState("");
+
+  const [search, setSearch]   = useState("");
+  const [activeTab, setTab]   = useState<Tab>("Projects");
 
   useEffect(() => { void loadWorkflows(); }, [loadWorkflows]);
 
@@ -87,122 +57,141 @@ export function WorkflowsHome() {
     : workflows;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-[#111111] text-white flex flex-col font-book">
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-10 flex items-center justify-between px-6 md:px-10 h-14 bg-zinc-950/80 backdrop-blur-sm border-b border-zinc-800">
+      {/* ── Top nav ──────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-20 flex items-center justify-between px-6 h-12 bg-[#111111]/90 backdrop-blur-sm border-b border-white/[0.06]">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-white" />
-          <span className="text-sm font-semibold text-white tracking-tight">NextFlow</span>
+          <span className="text-[13px] font-medium text-white tracking-tight font-book">NextFlow</span>
         </Link>
         <UserButton />
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-zinc-950 border-b border-zinc-800/60">
-        {/* Dot grid bg */}
+      {/* ── Hero banner ──────────────────────────────────────────────────── */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{ height: 400 }}
+      >
+        {/* BG image — covers right half */}
         <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage: "radial-gradient(circle, #a1a1aa 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
+          className="absolute inset-0 bg-cover bg-right"
+          style={{ backgroundImage: `url(https://s.krea.ai/nodesHeaderBannerBlurGradient.webp)` }}
         />
-        {/* Gradient fade overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-zinc-950" />
+        {/* Dark gradient overlay fading left to right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#111111] from-30% via-[#111111]/80 via-55% to-transparent" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 py-16 md:py-20 flex flex-col md:flex-row items-start md:items-center gap-10">
-          {/* Left: copy */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
-                <Layers className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">Node Editor</h1>
-            </div>
-            <p className="text-zinc-400 text-sm leading-relaxed max-w-xs mb-8">
-              Connect every tool and model into complex automated pipelines — visually, in real time.
-            </p>
-            <Link
-              href="/dashboard/new"
-              className="inline-flex items-center gap-2 bg-white text-black text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-zinc-100 active:bg-zinc-200 transition-colors shadow-lg"
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center h-full px-12 md:px-16 max-w-[520px]">
+          {/* Icon + title */}
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg, #3b8bfc 0%, #1a6ef5 100%)" }}
             >
-              New Workflow
-              <span className="text-base leading-none">→</span>
-            </Link>
+              {/* Two-arrow icon approximation */}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M3 9h12M10 5l4 4-4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 5L4 9l4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h1 className="text-[28px] font-semibold text-white leading-none tracking-[-0.02em] font-book">
+              Node Editor
+            </h1>
           </div>
 
-          {/* Right: fake canvas preview */}
-          <div className="hidden md:flex w-[480px] h-52 rounded-2xl border border-zinc-700/60 bg-zinc-900/60 backdrop-blur-sm overflow-hidden items-center justify-center gap-6 px-8 shrink-0">
-            {[
-              { label: "Upload Image", w: "w-28" },
-              { label: "Run LLM",      w: "w-24" },
-              { label: "Output",       w: "w-20" },
-            ].map((node, i) => (
-              <div key={i} className="flex items-center gap-6">
-                <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-xs text-zinc-300 font-medium shadow-md">
-                  {node.label}
-                </div>
-                {i < 2 && (
-                  <div className="flex items-center gap-1 text-zinc-600">
-                    <div className="w-6 h-px bg-zinc-600" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
-                    <div className="w-6 h-px bg-zinc-600" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Description */}
+          <p className="text-[13.5px] text-[#b0b0b0] leading-[1.6] mb-8 font-book">
+            Nodes is the most powerful way to operate NextFlow. Connect<br />
+            every tool and model into complex automated pipelines.
+          </p>
+
+          {/* CTA button */}
+          <Link
+            href="/dashboard/new"
+            className="inline-flex items-center gap-2 bg-white text-[#111] text-[13px] font-medium font-book px-6 py-2.5 rounded-full hover:bg-white/90 active:bg-white/80 transition-colors w-fit"
+          >
+            New Workflow
+            <span className="text-base leading-none">→</span>
+          </Link>
         </div>
       </div>
 
-      {/* ── Workflows grid ────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-7xl mx-auto w-full px-6 md:px-10 py-8">
+      {/* ── Tabs + toolbar ───────────────────────────────────────────────── */}
+      <div className="px-6 md:px-12 pt-7 pb-0">
+        <div className="flex items-center gap-0">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 flex-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setTab(tab)}
+                className={[
+                  "px-4 py-1.5 rounded-full text-[13px] font-book transition-colors",
+                  activeTab === tab
+                    ? "bg-white text-[#111] font-medium"
+                    : "text-[#777] hover:text-white",
+                ].join(" ")}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <h2 className="text-sm font-semibold text-zinc-200 mr-2">My Workflows</h2>
-          <div className="flex-1" />
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search workflows…"
-              className="bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors w-52"
-            />
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search projects..."
+                className="bg-[#1a1a1a] border border-white/[0.08] rounded-full pl-9 pr-4 py-2 text-[12.5px] text-white placeholder:text-[#555] focus:outline-none focus:border-white/20 transition-colors w-52 font-book"
+              />
+            </div>
+
+            {/* Last viewed dropdown */}
+            <button className="flex items-center gap-1.5 bg-[#1a1a1a] border border-white/[0.08] rounded-full px-4 py-2 text-[12.5px] text-white hover:border-white/20 transition-colors font-book">
+              Last viewed
+              <ChevronDown className="w-3.5 h-3.5 text-[#666]" />
+            </button>
+
+            {/* Grid icon */}
+            <button className="flex items-center justify-center w-9 h-9 bg-[#1a1a1a] border border-white/[0.08] rounded-full hover:border-white/20 transition-colors">
+              <Grid2X2 className="w-4 h-4 text-[#666]" />
+            </button>
           </div>
         </div>
 
-        {/* Error */}
+        {/* Divider */}
+        <div className="mt-5 border-b border-white/[0.06]" />
+      </div>
+
+      {/* ── Grid ─────────────────────────────────────────────────────────── */}
+      <div className="px-6 md:px-12 py-7 flex-1">
+
         {error && (
           <p className="text-xs text-red-400 text-center py-8">{error}</p>
         )}
 
-        {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
 
           {/* New Workflow card */}
-          <Link
-            href="/dashboard/new"
-            className="group flex flex-col items-center justify-center aspect-[4/3] rounded-2xl border-2 border-dashed border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 hover:bg-zinc-900 transition-all gap-2"
-          >
-            <div className="w-10 h-10 rounded-full bg-zinc-800 group-hover:bg-zinc-700 flex items-center justify-center transition-colors">
-              <Plus className="w-5 h-5 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
+          <Link href="/dashboard/new" className="group flex flex-col gap-2">
+            <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/[0.06] group-hover:border-white/15 flex items-center justify-center transition-colors">
+              <div className="w-9 h-9 rounded-full bg-[#2a2a2a] group-hover:bg-[#333] flex items-center justify-center transition-colors">
+                <Plus className="w-4 h-4 text-white" />
+              </div>
             </div>
-            <span className="text-xs text-zinc-500 group-hover:text-zinc-300 font-medium transition-colors">
-              New Workflow
-            </span>
+            <p className="text-[13px] text-white font-book">New Workflow</p>
           </Link>
 
           {/* Skeleton loaders */}
           {loading && workflows.length === 0 && Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden animate-pulse">
-              <div className="h-36 bg-zinc-800" />
-              <div className="px-3 py-2.5 flex flex-col gap-1.5">
-                <div className="h-3 w-2/3 rounded bg-zinc-700" />
-                <div className="h-2 w-1/2 rounded bg-zinc-800" />
-              </div>
+            <div key={i} className="flex flex-col gap-2 animate-pulse">
+              <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c]" />
+              <div className="h-3 w-2/3 rounded bg-[#222]" />
+              <div className="h-2.5 w-1/2 rounded bg-[#1c1c1c]" />
             </div>
           ))}
 
@@ -212,20 +201,16 @@ export function WorkflowsHome() {
               key={wf.id}
               id={wf.id}
               name={wf.name}
-              nodeCount={wf.nodeCount}
               updatedAt={wf.updatedAt}
             />
           ))}
         </div>
 
-        {/* Empty state (after load, no workflows) */}
+        {/* Empty state */}
         {!loading && !error && workflows.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <p className="text-sm text-zinc-500">No workflows yet.</p>
-            <Link
-              href="/dashboard/new"
-              className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
-            >
+            <p className="text-[13px] text-[#555] font-book">No workflows yet.</p>
+            <Link href="/dashboard/new" className="text-[12px] text-white/40 hover:text-white/70 underline underline-offset-2 font-book transition-colors">
               Create your first workflow
             </Link>
           </div>
@@ -233,11 +218,11 @@ export function WorkflowsHome() {
 
         {/* Load more */}
         {hasMore && !search && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-10 flex justify-center">
             <button
               onClick={() => void fetchMore()}
               disabled={loadingMore}
-              className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+              className="text-[12px] text-[#555] hover:text-[#999] disabled:opacity-40 flex items-center gap-1.5 transition-colors font-book"
             >
               {loadingMore
                 ? <><RefreshCw className="w-3 h-3 animate-spin" />Loading…</>

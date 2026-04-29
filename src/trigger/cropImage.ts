@@ -1,5 +1,13 @@
 import { logger, task } from "@trigger.dev/sdk";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { tmpdir } from "os";
+import { join } from "path";
+import { writeFile, readFile, unlink } from "fs/promises";
+import { randomUUID } from "crypto";
 import { Transloadit } from "transloadit";
+
+const execFileAsync = promisify(execFile);
 
 const transloadit = new Transloadit({
   authKey:    process.env.TRANSLOADIT_AUTH_KEY!,
@@ -26,46 +34,60 @@ export const cropImageTask = task({
 
     if (!image_url) throw new Error("image_url is required");
 
-    logger.log("Cropping image via Transloadit", {
-      image_url, x_percent, y_percent, width_percent, height_percent,
-    });
+    const ffmpegBin  = process.env.FFMPEG_PATH ?? "ffmpeg";
+    const id         = randomUUID();
+    const inputPath  = join(tmpdir(), `crop-in-${id}.jpg`);
+    const outputPath = join(tmpdir(), `crop-out-${id}.jpg`);
 
-    // Transloadit /image/resize crop takes x1/y1 (top-left) and x2/y2 (bottom-right)
-    // expressed as percentage strings e.g. "10%"
-    const x1 = `${x_percent}%`;
-    const y1 = `${y_percent}%`;
-    const x2 = `${Math.min(x_percent + width_percent, 100)}%`;
-    const y2 = `${Math.min(y_percent + height_percent, 100)}%`;
+    try {
+      // 1. Download the source image
+      logger.log("Downloading image for crop", { image_url });
+      const response = await fetch(image_url);
+      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+      await writeFile(inputPath, Buffer.from(await response.arrayBuffer()));
 
-    const assembly = await transloadit.createAssembly({
-      waitForCompletion: true,
-      params: {
-        steps: {
-          imported: {
-            robot: "/http/import",
-            url:   image_url,
-          },
-          cropped: {
-            robot:  "/image/resize",
-            use:    "imported",
-            crop:   { x1, y1, x2, y2 },
-            result: true,
+      // 2. Crop with FFmpeg
+      // crop=w:h:x:y — all expressed as fractions of input dimensions so we
+      // never need to know the actual pixel size upfront.
+      // trunc() keeps values even-numbered (required by some encoders).
+      const w = `trunc(iw*${width_percent  / 100})`;
+      const h = `trunc(ih*${height_percent / 100})`;
+      const x = `trunc(iw*${x_percent      / 100})`;
+      const y = `trunc(ih*${y_percent      / 100})`;
+      const cropFilter = `crop=${w}:${h}:${x}:${y}`;
+
+      logger.log("Running FFmpeg crop", { cropFilter });
+      await execFileAsync(ffmpegBin, [
+        "-i",        inputPath,
+        "-vf",       cropFilter,
+        "-frames:v", "1",
+        "-q:v",      "2",
+        "-y",        outputPath,
+      ]);
+
+      // 3. Upload the cropped image to Transloadit for CDN-hosted URL
+      const assembly = await transloadit.createAssembly({
+        waitForCompletion: true,
+        uploads: { file: await readFile(outputPath) },
+        params: {
+          steps: {
+            ":original": { robot: "/upload/handle", result: true },
           },
         },
-      },
-    });
+      });
 
-    if (assembly.error) {
-      throw new Error(`Transloadit error: ${assembly.error} — ${assembly.message}`);
+      if (assembly.error) {
+        throw new Error(`Transloadit upload error: ${assembly.error} — ${assembly.message}`);
+      }
+
+      const uploaded = assembly.results?.[":original"]?.[0];
+      if (!uploaded?.ssl_url) throw new Error("Upload succeeded but no URL returned");
+
+      logger.log("Image cropped successfully", { image_url: uploaded.ssl_url });
+      return { image_url: uploaded.ssl_url };
+    } finally {
+      await unlink(inputPath).catch(() => {});
+      await unlink(outputPath).catch(() => {});
     }
-
-    const uploaded = assembly.results?.cropped?.[0];
-    if (!uploaded?.ssl_url) {
-      throw new Error("Crop succeeded but no URL returned from Transloadit");
-    }
-
-    const image_url_out = uploaded.ssl_url;
-    logger.log("Image cropped successfully", { image_url: image_url_out });
-    return { image_url: image_url_out };
   },
 });

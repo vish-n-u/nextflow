@@ -151,3 +151,11 @@ body {
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .font-book {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
