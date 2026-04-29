@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Node } from "@xyflow/react";
-import type { NodeRunResponse } from "@/lib/api/runs";
+import type { RunResponse, NodeRunResponse } from "@/lib/api/runs";
 import { useRunsStore } from "@/lib/stores/runsStore";
 
 // ── Display helpers ───────────────────────────────────────────────────────────
