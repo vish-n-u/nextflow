@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { Layers, Play, PanelLeft, PanelRight, Save, Check, Loader2 } from "lucide-react";
 
@@ -43,8 +44,10 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <Layers className="w-4 h-4 text-white hidden md:block" />
-        <span className="text-sm font-semibold text-white tracking-tight hidden sm:block">NextFlow</span>
+        <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+          <Layers className="w-4 h-4 text-white hidden md:block" />
+          <span className="text-sm font-semibold text-white tracking-tight hidden sm:block">NextFlow</span>
+        </Link>
       </div>
 
       <input
@@ -59,7 +62,7 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
         <button
           onClick={onSave}
           disabled={saveStatus === "saving"}
-          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
             saveStatus === "saved"
               ? "bg-green-500/15 text-green-400 border-green-500/30"
               : saveStatus === "error"
@@ -84,7 +87,7 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
         <button
           onClick={onRunWorkflow}
           disabled={workflowStatus === "running"}
-          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${btnCls}`}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${btnCls}`}
         >
           <Play className="w-3 h-3 fill-current" />
           <span className="hidden sm:inline">{btnLabel}</span>

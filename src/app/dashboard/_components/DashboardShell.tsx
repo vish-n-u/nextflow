@@ -301,6 +301,16 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
         selectedCount={selectedCount}
       />
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Starting toast */}
+        {workflowStatus === "running" && !workflowRun && (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-full bg-zinc-900 border border-yellow-500/30 shadow-2xl shadow-yellow-500/10 pointer-events-none">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-400" />
+            </span>
+            <span className="text-sm text-yellow-200 font-medium tracking-wide">Workflow starting…</span>
+          </div>
+        )}
         <LeftBar
           onNodeAdd={handleNodeAdd}
           isOpen={leftBarOpen}
