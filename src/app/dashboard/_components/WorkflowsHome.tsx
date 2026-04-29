@@ -80,10 +80,7 @@ export function WorkflowsHome() {
       </header>
 
       {/* ── Hero banner ──────────────────────────────────────────────────── */}
-      <div
-        className="relative w-full overflow-hidden"
-        style={{ height: 400 }}
-      >
+      <div className="relative w-full overflow-hidden min-h-[320px] sm:min-h-[400px]">
         {/* BG image — covers right half */}
         <div
           className="absolute inset-0 bg-cover bg-right"
@@ -93,7 +90,7 @@ export function WorkflowsHome() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#111111] from-30% via-[#111111]/80 via-55% to-transparent" />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center h-full px-12 md:px-16 max-w-[520px]">
+        <div className="relative z-10 flex flex-col justify-center h-full px-6 sm:px-12 md:px-16 max-w-[520px]">
           {/* Icon + title */}
           <div className="flex items-center gap-3 mb-4">
             <div
@@ -130,15 +127,15 @@ export function WorkflowsHome() {
 
       {/* ── Tabs + toolbar ───────────────────────────────────────────────── */}
       <div className="px-6 md:px-12 pt-7 pb-0">
-        <div className="flex items-center gap-0">
-          {/* Tabs */}
-          <div className="flex items-center gap-1 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Tabs — scrollable on mobile */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 shrink-0">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setTab(tab)}
                 className={[
-                  "px-4 py-1.5 rounded-full text-[13px] font-book transition-colors",
+                  "px-4 py-1.5 rounded-full text-[13px] font-book transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab
                     ? "bg-white text-[#111] font-medium"
                     : "text-[#777] hover:text-white",
@@ -150,26 +147,26 @@ export function WorkflowsHome() {
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555] pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search projects..."
-                className="bg-[#1a1a1a] border border-white/[0.08] rounded-full pl-9 pr-4 py-2 text-[12.5px] text-white placeholder:text-[#555] focus:outline-none focus:border-white/20 transition-colors w-52 font-book"
+                className="bg-[#1a1a1a] border border-white/[0.08] rounded-full pl-9 pr-4 py-2 text-[12.5px] text-white placeholder:text-[#555] focus:outline-none focus:border-white/20 transition-colors w-full sm:w-44 font-book"
               />
             </div>
 
-            {/* Last viewed dropdown */}
-            <button className="flex items-center gap-1.5 bg-[#1a1a1a] border border-white/[0.08] rounded-full px-4 py-2 text-[12.5px] text-white hover:border-white/20 transition-colors font-book">
+            {/* Last viewed dropdown — hidden on mobile */}
+            <button className="hidden sm:flex items-center gap-1.5 bg-[#1a1a1a] border border-white/[0.08] rounded-full px-4 py-2 text-[12.5px] text-white hover:border-white/20 transition-colors font-book">
               Last viewed
               <ChevronDown className="w-3.5 h-3.5 text-[#666]" />
             </button>
 
             {/* Grid icon */}
-            <button className="flex items-center justify-center w-9 h-9 bg-[#1a1a1a] border border-white/[0.08] rounded-full hover:border-white/20 transition-colors">
+            <button className="flex items-center justify-center w-9 h-9 bg-[#1a1a1a] border border-white/[0.08] rounded-full hover:border-white/20 transition-colors shrink-0">
               <Grid2X2 className="w-4 h-4 text-[#666]" />
             </button>
           </div>
