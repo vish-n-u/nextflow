@@ -310,7 +310,7 @@ export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps
         className={`
           fixed top-12 bottom-0 right-0 z-40
           flex flex-col bg-zinc-950 border-l border-zinc-800 overflow-hidden
-          transform transition-all duration-200 ease-in-out
+          transform transition-all duration-200 ease-in-out font-book
           md:static md:top-auto md:bottom-auto md:z-auto md:shrink-0
           md:translate-x-0
           ${isOpen ? "translate-x-0" : "translate-x-full"}

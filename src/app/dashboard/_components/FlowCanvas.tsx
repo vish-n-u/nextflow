@@ -28,11 +28,13 @@ import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, type L
 import { getEdgeColor } from "@/lib/nodeColors";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
+import { GlowEdge } from "./edges/GlowEdge";
 import { getNodeMeta } from "@/lib/nodeRegistry";
 import { isValidHandleConnection } from "@/lib/nodeContracts";
 import { WorkflowRunContext } from "./nodes/WorkflowRunContext";
 
 const nodeTypes = COMPONENT_REGISTRY;
+const edgeTypes = { glowEdge: GlowEdge };
 
 function getDefaultData(type: string): Record<string, unknown> {
   return getNodeMeta(type)?.defaultData ?? {};
@@ -333,6 +335,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
       const color = getEdgeColor(srcNode?.type ?? "");
       setEdges((eds) => addEdge({
         ...params,
+        type: "glowEdge",
         animated: false,
         style: { stroke: color, strokeWidth: 1.5 },
       }, eds));
@@ -412,6 +415,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
       const safeEdges = incomingEdges.map((e, i) => ({
         ...e,
         id: e.id ?? `edge-restored-${i}`,
+        type: "glowEdge",
         animated: false,
         style: { stroke: getEdgeColor(nodeTypeMap.get(e.source) ?? ""), strokeWidth: 1.5 },
       }));
@@ -454,20 +458,10 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
             }
             updateNodeData(nodeId, update);
 
-            // Animate incoming edges when node is running, restore when done
+            // Light up incoming edges when node is running, restore when done
             setEdges((eds) => eds.map((e) => {
               if (e.target !== nodeId) return e;
-              if (status === "running") {
-                const glowColor = (e.style?.stroke as string | undefined)
-                  ?? getEdgeColor(nodesRef.current.find((n) => n.id === e.source)?.type ?? "");
-                return {
-                  ...e,
-                  animated: true,
-                  className: "edge-pulsing",
-                  style: { ...e.style, "--edge-glow": glowColor } as React.CSSProperties,
-                };
-              }
-              return { ...e, animated: false, className: undefined };
+              return { ...e, animated: false, data: { ...e.data, glow: status === "running" } };
             }));
           }
         }
@@ -510,7 +504,8 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         onPaneClick={() => onNodeSelect(null)}
         onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
-        defaultEdgeOptions={{ animated: false }}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={{ type: "glowEdge", animated: false }}
         deleteKeyCode={["Backspace", "Delete"]}
         colorMode="dark"
         fitView={false}
