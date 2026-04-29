@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MousePointerClick, History, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { MousePointerClick, History, ChevronDown, ChevronRight, ChevronLeft, RefreshCw } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import type { NodeRunResponse } from "@/lib/api/runs";
 import { useRunsStore } from "@/lib/stores/runsStore";
@@ -285,12 +285,15 @@ interface RightBarProps {
 }
 
 export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps) {
-  const [tab, setTab] = useState<Tab>("history");
+  const [tab, setTab]           = useState<Tab>("history");
+  const [collapsed, setCollapsed] = useState(false);
 
   // Auto-switch to Properties when a node is selected
   useEffect(() => {
     if (selectedNode) setTab("properties");
   }, [selectedNode]);
+
+  const expandTo = (t: Tab) => { setCollapsed(false); setTab(t); };
 
   return (
     <>
@@ -300,52 +303,106 @@ export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps
 
       <aside
         className={`
-          fixed top-12 bottom-0 right-0 z-40 w-72
+          fixed top-12 bottom-0 right-0 z-40
           flex flex-col bg-zinc-950 border-l border-zinc-800 overflow-hidden
-          transform transition-transform duration-200 ease-in-out
-          md:static md:top-auto md:bottom-auto md:z-auto md:w-64
-          md:translate-x-0 md:shrink-0
+          transform transition-all duration-200 ease-in-out
+          md:static md:top-auto md:bottom-auto md:z-auto md:shrink-0
+          md:translate-x-0
           ${isOpen ? "translate-x-0" : "translate-x-full"}
+          ${collapsed ? "md:w-12 w-72" : "md:w-64 w-72"}
         `}
       >
-        {/* Tab row */}
-        <div className="flex border-b border-zinc-800 shrink-0">
+        {/* ── Collapsed strip (desktop only) ── */}
+        <div className={`${collapsed ? "md:flex" : "md:hidden"} hidden flex-col items-center gap-2 py-2.5 flex-1`}>
+          {/* Expand button */}
           <button
-            onClick={() => setTab("history")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
+            onClick={() => setCollapsed(false)}
+            title="Expand panel"
+            className="w-9 h-9 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 flex items-center justify-center transition-colors shrink-0"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div className="w-6 h-px bg-zinc-800 shrink-0" />
+
+          {/* History icon */}
+          <button
+            onClick={() => expandTo("history")}
+            title="History"
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
               tab === "history"
-                ? "text-white border-indigo-500"
-                : "text-zinc-500 border-transparent hover:text-zinc-300"
+                ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
             }`}
           >
-            <History className="w-3 h-3" />
-            History
+            <History className="w-4 h-4" />
           </button>
+
+          {/* Properties icon */}
           <button
-            onClick={() => setTab("properties")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
+            onClick={() => expandTo("properties")}
+            title="Properties"
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
               tab === "properties"
-                ? "text-white border-indigo-500"
-                : "text-zinc-500 border-transparent hover:text-zinc-300"
+                ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
             }`}
           >
-            <MousePointerClick className="w-3 h-3" />
-            Properties
-          </button>
-          <button
-            onClick={onClose}
-            className="md:hidden px-3 text-zinc-600 hover:text-zinc-400 text-lg leading-none border-b-2 border-transparent"
-            aria-label="Close panel"
-          >
-            ×
+            <MousePointerClick className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-3">
-          {tab === "history"
-            ? <HistoryTab />
-            : <PropertiesTab selectedNode={selectedNode} />}
+        {/* ── Full panel ── */}
+        <div className={`${collapsed ? "md:hidden" : "md:flex"} flex flex-col flex-1 overflow-hidden`}>
+          {/* Tab row */}
+          <div className="flex border-b border-zinc-800 shrink-0">
+            <button
+              onClick={() => setTab("history")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
+                tab === "history"
+                  ? "text-white border-indigo-500"
+                  : "text-zinc-500 border-transparent hover:text-zinc-300"
+              }`}
+            >
+              <History className="w-3 h-3" />
+              History
+            </button>
+            <button
+              onClick={() => setTab("properties")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
+                tab === "properties"
+                  ? "text-white border-indigo-500"
+                  : "text-zinc-500 border-transparent hover:text-zinc-300"
+              }`}
+            >
+              <MousePointerClick className="w-3 h-3" />
+              Properties
+            </button>
+            {/* Desktop collapse button */}
+            <button
+              onClick={() => setCollapsed(true)}
+              title="Collapse panel"
+              className="hidden md:flex px-2.5 text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 items-center justify-center border-b-2 border-transparent transition-colors"
+              aria-label="Collapse panel"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+            {/* Mobile close button */}
+            <button
+              onClick={onClose}
+              className="md:hidden px-3 text-zinc-600 hover:text-zinc-400 text-lg leading-none border-b-2 border-transparent"
+              aria-label="Close panel"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3">
+            {tab === "history"
+              ? <HistoryTab />
+              : <PropertiesTab selectedNode={selectedNode} />}
+          </div>
         </div>
       </aside>
     </>

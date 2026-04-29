@@ -214,6 +214,13 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     }
   }, [workflowStatus, workflowName, selectedCount]);
 
+  // Reset button back to idle after success/error
+  useEffect(() => {
+    if (workflowStatus !== "success" && workflowStatus !== "error") return;
+    const t = setTimeout(() => setWorkflowStatus("idle"), 6000);
+    return () => clearTimeout(t);
+  }, [workflowStatus]);
+
   // Subscribe to the orchestrator run, update top-level status, and persist completion
   useEffect(() => {
     if (!workflowRun) return;
