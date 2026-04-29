@@ -2,13 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { ChevronRight, ChevronLeft, Search, X } from "lucide-react";
-import { NODE_REGISTRY, type NodeMeta, type NodeCategory as NodeCategoryType } from "@/lib/nodeRegistry";
+import { NODE_REGISTRY, type NodeMeta } from "@/lib/nodeRegistry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const CATEGORY_ORDER: NodeCategoryType[] = ["Input", "AI", "Transform"];
 
 // ── Collapsed strip: icon-only quick-access buttons ───────────────────────────
 
@@ -76,18 +73,13 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
 
   const handleAdd = (type: string) => { onNodeAdd(type); onClose?.(); };
 
-  const searchResults = useMemo(() => {
+  const visibleNodes = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return null;
+    if (!q) return NODE_REGISTRY;
     return NODE_REGISTRY.filter(
       (n) => n.label.toLowerCase().includes(q) || n.description.toLowerCase().includes(q),
     );
   }, [query]);
-
-  const categories = CATEGORY_ORDER.map((cat) => ({
-    label: cat,
-    nodes: NODE_REGISTRY.filter((n) => n.category === cat),
-  }));
 
   return (
     <>
@@ -184,36 +176,15 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
 
           {/* Node list */}
           <ScrollArea className="flex-1">
-          <div className="px-3 pb-3">
-            {searchResults ? (
-              searchResults.length > 0 ? (
-                <div className="flex flex-col gap-1.5 pt-1">
-                  {searchResults.map((node) => (
-                    <NodeCard key={node.type} node={node} onAdd={handleAdd} />
-                  ))}
-                </div>
+            <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1">
+              {visibleNodes.length > 0 ? (
+                visibleNodes.map((node) => (
+                  <NodeCard key={node.type} node={node} onAdd={handleAdd} />
+                ))
               ) : (
                 <p className="text-[11px] text-zinc-600 text-center pt-8">No nodes match &ldquo;{query}&rdquo;</p>
-              )
-            ) : (
-              <Accordion type="single" collapsible defaultValue={categories[0]?.label}>
-                {categories.map((cat) => (
-                  <AccordionItem key={cat.label} value={cat.label} className="border-none">
-                    <AccordionTrigger className="px-1 py-2 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest hover:text-zinc-400 hover:no-underline rounded-none [&_svg]:text-zinc-600">
-                      {cat.label}
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-0">
-                      <div className="flex flex-col gap-1.5 pb-4">
-                        {cat.nodes.map((node) => (
-                          <NodeCard key={node.type} node={node} onAdd={handleAdd} />
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            )}
-          </div>
+              )}
+            </div>
           </ScrollArea>
         </div>
       </aside>
