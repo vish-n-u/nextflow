@@ -34,6 +34,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
   const loadWorkflowFnRef        = useRef<((nodes: Node[], edges: Edge[]) => void) | null>(null);
   const pendingWorkflowRef       = useRef<{ id: string; name: string; nodes: Node[]; edges: Edge[] } | null>(null);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [canvasMode, setCanvasMode] = useState<"select" | "pan">("pan");
 
   const handleRegisterRunWorkflow = useCallback(
     (fn: (subset?: { nodes: Node[]; edges: Edge[] }) => Promise<{ runId: string; publicToken: string; nodes: Node[]; edges: Edge[] }>) => {
@@ -148,8 +149,9 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
   const handleRunWorkflow = useCallback(async () => {
     if (!runWorkflowFnRef.current || workflowStatus === "running") return;
 
-    // Decide subgraph: use selected nodes if any, else run all
-    const isPartial = selectedCount > 0;
+    // Decide subgraph: only use selection when the user is in select mode
+    // (clicking a node in pan mode is for inspection, not run targeting)
+    const isPartial = canvasMode === "select" && selectedCount > 0;
     const subgraph  = isPartial ? getSelectedNodesFnRef.current?.() : undefined;
     const { nodes: allNodes, edges: allEdges } = getSnapshotFnRef.current?.() ?? { nodes: [], edges: [] };
 
@@ -212,7 +214,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     } catch {
       setWorkflowStatus("error");
     }
-  }, [workflowStatus, workflowName, selectedCount]);
+  }, [workflowStatus, workflowName, selectedCount, canvasMode]);
 
   // Reset button back to idle after success/error
   useEffect(() => {
@@ -298,7 +300,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
         onToggleLeftBar={() => setLeftBarOpen((v) => !v)}
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
         runError={runError}
-        selectedCount={selectedCount}
+        selectedCount={canvasMode === "select" ? selectedCount : 0}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Starting toast */}
@@ -325,6 +327,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
           onRegisterGetSelectedNodes={handleRegisterGetSelectedNodes}
           onRegisterLoadWorkflow={handleRegisterLoadWorkflow}
           onSelectedCountChange={setSelectedCount}
+          onCanvasModeChange={setCanvasMode}
           onRunSelected={handleRunWorkflow}
           workflowRun={workflowRun}
           isWorkflowRunning={workflowStatus === "running"}

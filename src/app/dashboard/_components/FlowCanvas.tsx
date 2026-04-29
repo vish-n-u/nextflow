@@ -199,15 +199,20 @@ interface FlowCanvasInnerProps {
   onRegisterGetSelectedNodes: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
   onSelectedCountChange: (count: number) => void;
+  onCanvasModeChange: (mode: CanvasMode) => void;
   onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onRunSelected, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onCanvasModeChange, onRunSelected, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>("pan");
+  const handleCanvasModeChange = useCallback((mode: CanvasMode) => {
+    setCanvasMode(mode);
+    onCanvasModeChange(mode);
+  }, [onCanvasModeChange]);
   const { screenToFlowPosition, getNode, updateNodeData, fitView } = useReactFlow();
 
   // Keep refs to latest state for the workflow-run fn and history saves
@@ -261,8 +266,8 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
 
       // Mode shortcuts (no modifier)
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.key === "s" || e.key === "S") { setCanvasMode("select"); return; }
-        if (e.key === "h" || e.key === "H") { setCanvasMode("pan");    return; }
+        if (e.key === "s" || e.key === "S") { handleCanvasModeChange("select"); return; }
+        if (e.key === "h" || e.key === "H") { handleCanvasModeChange("pan");    return; }
       }
 
       // Undo / redo
@@ -522,7 +527,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
           color="#27272a"
           style={{ backgroundColor: "#0a0a0a" }}
         />
-        <BottomToolbar mode={canvasMode} onModeChange={setCanvasMode} />
+        <BottomToolbar mode={canvasMode} onModeChange={handleCanvasModeChange} />
         <MiniMap
           position="bottom-right"
           nodeColor="#3f3f46"
@@ -549,6 +554,7 @@ interface FlowCanvasProps {
   onRegisterGetSelectedNodes: (fn: () => { nodes: Node[]; edges: Edge[] }) => void;
   onRegisterLoadWorkflow: (fn: (nodes: Node[], edges: Edge[]) => void) => void;
   onSelectedCountChange: (count: number) => void;
+  onCanvasModeChange: (mode: "select" | "pan") => void;
   onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;

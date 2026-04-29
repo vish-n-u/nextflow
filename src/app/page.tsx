@@ -51,7 +51,7 @@ export default function Home() {
       <main className="flex flex-col items-center text-center pt-40 pb-20 px-6 flex-1">
         {/* Heading */}
         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight max-w-4xl">
-          <span className="text-zinc-400">NextFlow</span> is the world&apos;s most
+          <span className="text-zinc-400">NextFlow  </span> is the world&apos;s most
           powerful workflow automation platform.
         </h1>
 

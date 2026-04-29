@@ -1,4 +1,4 @@
-import { task, metadata } from "@trigger.dev/sdk";
+import { task, metadata, runs } from "@trigger.dev/sdk";
 import { TASK_REGISTRY } from "./taskRegistry";
 
 interface FlowNode {
@@ -130,30 +130,45 @@ export const orchestratorTask = task({
         };
       });
 
-      const levelStart = Date.now();
-      const results    = await nodeRunnerTask.batchTriggerAndWait(levelPayloads);
-      const levelMs    = Date.now() - levelStart;
+      // Fire all nodes in this level concurrently without blocking
+      const batchHandle = await nodeRunnerTask.batchTrigger(levelPayloads);
 
+      // Subscribe to realtime updates — update each node's status the moment it finishes
+      let pending     = batchHandle.runCount;
       let levelFailed = false;
-      for (let i = 0; i < results.runs.length; i++) {
-        const run  = results.runs[i];
-        const node = level[i];
-        nodeDurations[node.id] = levelMs;
-        if (run.ok) {
-          nodeOutputs[node.id]  = run.output.output as string;
-          nodeStatuses[node.id] = "success";
-        } else {
-          nodeStatuses[node.id] = "error";
-          nodeErrors[node.id]   = run.error ? String(run.error) : "Node failed";
-          levelFailed           = true;
-        }
-      }
 
-      metadata.set("nodeStatuses",  { ...nodeStatuses });
-      metadata.set("nodeOutputs",   { ...nodeOutputs });
-      metadata.set("nodeErrors",    { ...nodeErrors });
-      metadata.set("nodeDurations", { ...nodeDurations });
-      await metadata.flush();
+      for await (const run of runs.subscribeToBatch(batchHandle.batchId)) {
+        // Skip non-terminal state transitions
+        if (!run.isCompleted && !run.isFailed && !run.isCancelled) continue;
+
+        // Identify the node: output carries nodeId on success, payload carries it on failure
+        const nodeId =
+          (run.output  as { nodeId?: string } | undefined)?.nodeId ??
+          (run.payload as { nodeId?: string } | undefined)?.nodeId;
+
+        // Skip if unidentifiable or already processed (subscribeToBatch emits multiple events per run)
+        if (!nodeId || nodeStatuses[nodeId] !== "running") continue;
+
+        pending--;
+        nodeDurations[nodeId] = run.durationMs;
+
+        if (run.isSuccess && run.output) {
+          nodeOutputs[nodeId]  = (run.output as { nodeId: string; output: string }).output;
+          nodeStatuses[nodeId] = "success";
+        } else {
+          nodeStatuses[nodeId] = "error";
+          nodeErrors[nodeId]   = run.error?.message ?? "Node failed";
+          levelFailed          = true;
+        }
+
+        metadata.set("nodeStatuses",  { ...nodeStatuses });
+        metadata.set("nodeOutputs",   { ...nodeOutputs });
+        metadata.set("nodeErrors",    { ...nodeErrors });
+        metadata.set("nodeDurations", { ...nodeDurations });
+        await metadata.flush();
+
+        if (pending <= 0) break;
+      }
 
       if (levelFailed) throw new Error("One or more nodes in this level failed");
     }
