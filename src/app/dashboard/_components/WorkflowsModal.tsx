@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { FolderOpen, RefreshCw, X, Clock, Box } from "lucide-react";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface WorkflowDetail {
   id:    string;
@@ -12,6 +15,7 @@ interface WorkflowDetail {
 }
 
 interface WorkflowsModalProps {
+  open:    boolean;
   onLoad:  (workflow: WorkflowDetail) => void;
   onClose: () => void;
 }
@@ -25,7 +29,7 @@ function formatUpdatedAt(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
+export function WorkflowsModal({ open, onLoad, onClose }: WorkflowsModalProps) {
   const { workflows, hasMore, loading, loadingMore, error, fetch: loadWorkflows, fetchMore } = useWorkflowsStore();
   const [loadingId,   setLoadingId]   = useState<string | null>(null);
   const [selectError, setSelectError] = useState<string | null>(null);
@@ -47,34 +51,31 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
-        <div className="pointer-events-auto w-full sm:max-w-md bg-zinc-950 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-zinc-400" />
-              <span className="text-sm font-semibold text-zinc-100">Open Workflow</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-zinc-600 hover:text-zinc-300 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent
+        className="bg-zinc-950 border-zinc-800 p-0 sm:max-w-md overflow-hidden gap-0"
+        showCloseButton={false}
+      >
+        {/* Header */}
+        <DialogHeader className="flex flex-row items-center justify-between px-5 py-4 border-b border-zinc-800 space-y-0">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-zinc-400" />
+            <DialogTitle className="text-sm font-semibold text-zinc-100">Open Workflow</DialogTitle>
           </div>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="icon-sm"
+            className="text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </DialogHeader>
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto max-h-[50dvh] sm:max-h-[60dvh] p-3">
+        {/* Body */}
+        <ScrollArea className="max-h-[50dvh] sm:max-h-[60dvh]">
+          <div className="p-3">
             {loading && (
               <div className="flex items-center justify-center h-32">
                 <RefreshCw className="w-4 h-4 text-zinc-600 animate-spin" />
@@ -97,11 +98,12 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
             {!loading && !error && workflows.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 {workflows.map((wf) => (
-                  <button
+                  <Button
                     key={wf.id}
                     onClick={() => handleSelect(wf.id)}
                     disabled={loadingId !== null}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-left group"
+                    variant="ghost"
+                    className="w-full flex items-center gap-3 px-3 py-3 h-auto rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/80 justify-start text-left group"
                   >
                     {loadingId === wf.id ? (
                       <RefreshCw className="w-4 h-4 text-zinc-400 animate-spin shrink-0" />
@@ -123,25 +125,26 @@ export function WorkflowsModal({ onLoad, onClose }: WorkflowsModalProps) {
                         </span>
                       </div>
                     </div>
-                  </button>
+                  </Button>
                 ))}
 
                 {hasMore && (
-                  <button
+                  <Button
                     onClick={() => void fetchMore()}
                     disabled={loadingMore}
-                    className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
+                    variant="ghost"
+                    className="w-full py-2 h-auto text-xs text-zinc-500 hover:text-zinc-300"
                   >
                     {loadingMore
                       ? <><RefreshCw className="w-3 h-3 animate-spin" />Loading…</>
                       : "Load more"}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }

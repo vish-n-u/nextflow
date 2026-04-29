@@ -21,6 +21,7 @@ import {
   type IsValidConnection,
   type FitViewOptions,
   type OnSelectionChangeParams,
+  SelectionMode,
 } from "@xyflow/react";
 
 import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, type LucideIcon } from "lucide-react";
@@ -512,7 +513,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         proOptions={{ hideAttribution: true }}
         panOnDrag={canvasMode === "pan"}
         selectionOnDrag={canvasMode === "select"}
-        selectionMode="partial"
+        selectionMode={SelectionMode.Partial}
       >
         <Background
           variant={BackgroundVariant.Dots}

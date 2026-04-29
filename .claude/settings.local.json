@@ -15,7 +15,11 @@
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && rm src/middleware.ts)",
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && npm run build 2>&1)",
       "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && node -e \"const t = require\\('transloadit'\\); console.log\\(Object.keys\\(t\\)\\)\" 2>&1)",
-      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && rm -rf .next)"
+      "Bash(cd \"C:\\\\Users\\\\vishn\\\\Desktop\\\\NextFlow\\\\nextflow\" && rm -rf .next)",
+      "Bash(npx shadcn@latest add input badge --yes 2>&1)",
+      "Bash(npx tsc:*)",
+      "Bash(npx shadcn@latest add dialog tabs collapsible scroll-area --yes 2>&1)",
+      "Bash(npx shadcn@latest add accordion --yes 2>&1)"
     ]
   }
 }

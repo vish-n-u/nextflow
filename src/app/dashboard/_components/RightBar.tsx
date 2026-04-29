@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MousePointerClick, History, ChevronDown, ChevronRight, ChevronLeft, RefreshCw } from "lucide-react";
+import { MousePointerClick, History, ChevronDown, ChevronRight, ChevronLeft, RefreshCw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Node } from "@xyflow/react";
 import type { NodeRunResponse } from "@/lib/api/runs";
 import { useRunsStore } from "@/lib/stores/runsStore";
@@ -49,17 +53,17 @@ const STATUS_STYLES: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   const cls = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cls}`}>
+    <Badge className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cls}`}>
       {status}
-    </span>
+    </Badge>
   );
 }
 
 function ScopeBadge({ scope }: { scope: string }) {
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
+    <Badge className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
       {scope}
-    </span>
+    </Badge>
   );
 }
 
@@ -200,15 +204,16 @@ function HistoryTab() {
         <RunRow key={run.id} run={run} />
       ))}
       {hasMore && (
-        <button
+        <Button
           onClick={() => void fetchMore()}
           disabled={loadingMore}
-          className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-colors"
+          variant="ghost"
+          className="w-full py-2 h-auto text-xs text-zinc-500 hover:text-zinc-300"
         >
           {loadingMore
             ? <><RefreshCw className="w-3 h-3 animate-spin" />Loading…</>
             : "Load more"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -313,97 +318,113 @@ export function RightBar({ selectedNode, isOpen = true, onClose }: RightBarProps
         `}
       >
         {/* ── Collapsed strip (desktop only) ── */}
-        <div className={`${collapsed ? "md:flex" : "md:hidden"} hidden flex-col items-center gap-2 py-2.5 flex-1`}>
+        <ScrollArea className={`${collapsed ? "md:flex" : "md:hidden"} hidden flex-col items-center gap-2 py-2.5 flex-1`}>
           {/* Expand button */}
-          <button
+          <Button
             onClick={() => setCollapsed(false)}
             title="Expand panel"
-            className="w-9 h-9 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 flex items-center justify-center transition-colors shrink-0"
+            variant="ghost"
+            size="icon"
+            className="text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </Button>
 
           <div className="w-6 h-px bg-zinc-800 shrink-0" />
 
           {/* History icon */}
-          <button
+          <Button
             onClick={() => expandTo("history")}
             title="History"
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+            variant="ghost"
+            size="icon"
+            className={`shrink-0 border ${
               tab === "history"
-                ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
+                ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-600/30"
+                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border-transparent"
             }`}
           >
             <History className="w-4 h-4" />
-          </button>
+          </Button>
 
           {/* Properties icon */}
-          <button
+          <Button
             onClick={() => expandTo("properties")}
             title="Properties"
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+            variant="ghost"
+            size="icon"
+            className={`shrink-0 border ${
               tab === "properties"
-                ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
+                ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-600/30"
+                : "text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 border-transparent"
             }`}
           >
             <MousePointerClick className="w-4 h-4" />
-          </button>
-        </div>
+          </Button>
+        </ScrollArea>
 
         {/* ── Full panel ── */}
-        <div className={`${collapsed ? "md:hidden" : "md:flex"} flex flex-col flex-1 overflow-hidden`}>
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as Tab)}
+          className={`${collapsed ? "md:hidden" : "md:flex"} flex flex-col flex-1 overflow-hidden gap-0`}
+        >
           {/* Tab row */}
-          <div className="flex border-b border-zinc-800 shrink-0">
-            <button
-              onClick={() => setTab("history")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
-                tab === "history"
-                  ? "text-white border-indigo-500"
-                  : "text-zinc-500 border-transparent hover:text-zinc-300"
-              }`}
+          <div className="flex items-stretch border-b border-zinc-800 shrink-0">
+            <TabsList
+              variant="line"
+              className="flex-1 h-auto rounded-none bg-transparent p-0 gap-0 w-auto"
             >
-              <History className="w-3 h-3" />
-              History
-            </button>
-            <button
-              onClick={() => setTab("properties")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors border-b-2 ${
-                tab === "properties"
-                  ? "text-white border-indigo-500"
-                  : "text-zinc-500 border-transparent hover:text-zinc-300"
-              }`}
-            >
-              <MousePointerClick className="w-3 h-3" />
-              Properties
-            </button>
+              <TabsTrigger
+                value="history"
+                className="flex-1 gap-1.5 py-2.5 text-[11px] font-semibold rounded-none data-active:bg-transparent data-active:text-white data-active:after:opacity-100 text-zinc-500 hover:text-zinc-300"
+              >
+                <History className="w-3 h-3" />
+                History
+              </TabsTrigger>
+              <TabsTrigger
+                value="properties"
+                className="flex-1 gap-1.5 py-2.5 text-[11px] font-semibold rounded-none data-active:bg-transparent data-active:text-white data-active:after:opacity-100 text-zinc-500 hover:text-zinc-300"
+              >
+                <MousePointerClick className="w-3 h-3" />
+                Properties
+              </TabsTrigger>
+            </TabsList>
             {/* Desktop collapse button */}
-            <button
+            <Button
               onClick={() => setCollapsed(true)}
               title="Collapse panel"
-              className="hidden md:flex px-2.5 text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 items-center justify-center border-b-2 border-transparent transition-colors"
+              variant="ghost"
+              size="icon-sm"
+              className="hidden md:flex text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 rounded-none shrink-0"
               aria-label="Collapse panel"
             >
               <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+            </Button>
             {/* Mobile close button */}
-            <button
+            <Button
               onClick={onClose}
-              className="md:hidden px-3 text-zinc-600 hover:text-zinc-400 text-lg leading-none border-b-2 border-transparent"
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden text-zinc-600 hover:text-zinc-400 rounded-none shrink-0"
               aria-label="Close panel"
             >
-              ×
-            </button>
+              <X className="w-3.5 h-3.5" />
+            </Button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-3">
-            {tab === "history"
-              ? <HistoryTab />
-              : <PropertiesTab selectedNode={selectedNode} />}
-          </div>
-        </div>
+          <TabsContent value="history" className="flex-1 overflow-hidden mt-0">
+            <ScrollArea className="h-full">
+              <div className="p-3"><HistoryTab /></div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="properties" className="flex-1 overflow-hidden mt-0">
+            <ScrollArea className="h-full">
+              <div className="p-3"><PropertiesTab selectedNode={selectedNode} /></div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </aside>
     </>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import MobileMenu from "./_components/MobileMenu";
+import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { label: "Features",     href: "#features" },
@@ -34,18 +35,12 @@ export default function Home() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/sign-up"
-            className="rounded-full bg-white text-black text-sm font-semibold px-5 py-2 hover:bg-zinc-200 transition-colors duration-150"
-          >
-            Sign up for free
-          </Link>
-          <Link
-            href="/sign-in"
-            className="rounded-full bg-zinc-800 text-white text-sm font-semibold px-5 py-2 hover:bg-zinc-700 transition-colors duration-150"
-          >
-            Log in
-          </Link>
+          <Button asChild size="sm" className="rounded-full bg-white text-black font-semibold hover:bg-zinc-200">
+            <Link href="/sign-up">Sign up for free</Link>
+          </Button>
+          <Button asChild size="sm" variant="secondary" className="rounded-full bg-zinc-800 text-white font-semibold hover:bg-zinc-700 border border-zinc-700">
+            <Link href="/sign-in">Log in</Link>
+          </Button>
         </div>
 
         {/* Mobile hamburger + overlay (client component) */}
@@ -68,18 +63,12 @@ export default function Home() {
 
         {/* CTA buttons */}
         <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-          <Link
-            href="/sign-up"
-            className="rounded-full bg-white text-black text-base font-semibold px-8 py-3 hover:bg-zinc-200 transition-colors duration-150 w-48 text-center"
-          >
-            Start for free
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-full bg-zinc-800 text-white text-base font-semibold px-8 py-3 hover:bg-zinc-700 transition-colors duration-150 border border-zinc-700 w-48 text-center"
-          >
-            Launch App
-          </Link>
+          <Button asChild size="lg" className="rounded-full bg-white text-black font-semibold hover:bg-zinc-200 w-48">
+            <Link href="/sign-up">Start for free</Link>
+          </Button>
+          <Button asChild size="lg" variant="secondary" className="rounded-full bg-zinc-800 text-white font-semibold hover:bg-zinc-700 border border-zinc-700 w-48">
+            <Link href="/dashboard">Launch App</Link>
+          </Button>
         </div>
 
         {/* App preview */}

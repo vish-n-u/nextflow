@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft, Search, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, Search, X } from "lucide-react";
 import { NODE_REGISTRY, type NodeMeta, type NodeCategory as NodeCategoryType } from "@/lib/nodeRegistry";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const CATEGORY_ORDER: NodeCategoryType[] = ["Input", "AI", "Transform"];
 
@@ -57,30 +61,6 @@ function NodeCard({ node, onAdd }: { node: NodeMeta; onAdd: (type: string) => vo
   );
 }
 
-// ── Collapsible category ───────────────────────────────────────────────────────
-
-function Category({ category, onAdd }: { category: { label: string; nodes: NodeMeta[] }; onAdd: (type: string) => void }) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 w-full px-1 py-2 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest hover:text-zinc-400 transition-colors"
-      >
-        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-        {category.label}
-      </button>
-      {open && (
-        <div className="flex flex-col gap-1.5 mb-4">
-          {category.nodes.map((node) => (
-            <NodeCard key={node.type} node={node} onAdd={onAdd} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -128,15 +108,17 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
         `}
       >
         {/* ── Collapsed strip (desktop only) ── */}
-        <div className={`${collapsed ? "md:flex" : "md:hidden"} hidden flex-col items-center gap-2 py-2.5 flex-1 overflow-y-auto overscroll-contain`}>
+        <ScrollArea className={`${collapsed ? "md:flex" : "md:hidden"} hidden flex-col items-center gap-2 py-2.5 flex-1`}>
           {/* Expand button */}
-          <button
+          <Button
             onClick={() => setCollapsed(false)}
             title="Expand panel"
-            className="w-9 h-9 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 flex items-center justify-center transition-colors shrink-0"
+            variant="ghost"
+            size="icon"
+            className="text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 shrink-0"
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </Button>
 
           <div className="w-6 h-px bg-zinc-800 shrink-0" />
 
@@ -144,7 +126,7 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
           {NODE_REGISTRY.map((node) => (
             <CollapsedNodeBtn key={node.type} node={node} onAdd={onNodeAdd} />
           ))}
-        </div>
+        </ScrollArea>
 
         {/* ── Full panel ── */}
         <div className={`${collapsed ? "md:hidden" : "md:flex"} flex flex-col flex-1 overflow-hidden`}>
@@ -153,21 +135,25 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
             <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Nodes</p>
             <div className="flex items-center gap-1">
               {/* Desktop collapse button */}
-              <button
+              <Button
                 onClick={() => setCollapsed(true)}
                 title="Collapse panel"
-                className="hidden md:flex w-6 h-6 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 items-center justify-center transition-colors"
+                variant="ghost"
+                size="icon-xs"
+                className="hidden md:flex text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
+              </Button>
               {/* Mobile close button */}
-              <button
+              <Button
                 onClick={onClose}
-                className="md:hidden text-zinc-600 hover:text-zinc-400 text-lg leading-none"
+                variant="ghost"
+                size="icon-xs"
+                className="md:hidden text-zinc-600 hover:text-zinc-400"
                 aria-label="Close panel"
               >
-                ×
-              </button>
+                <X className="w-3.5 h-3.5" />
+              </Button>
             </div>
           </div>
 
@@ -175,27 +161,30 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
           <div className="px-3 pt-3 pb-2 shrink-0">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600 pointer-events-none" />
-              <input
+              <Input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search nodes…"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-7 pr-7 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-zinc-600 transition-colors"
+                className="bg-zinc-900 border-zinc-800 pl-7 pr-7 h-7 text-xs text-zinc-200 placeholder:text-zinc-600 focus-visible:border-zinc-600 focus-visible:ring-0"
               />
               {query && (
-                <button
+                <Button
                   onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 hover:bg-transparent"
                   aria-label="Clear search"
                 >
                   <X className="w-3 h-3" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           {/* Node list */}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
+          <ScrollArea className="flex-1">
+          <div className="px-3 pb-3">
             {searchResults ? (
               searchResults.length > 0 ? (
                 <div className="flex flex-col gap-1.5 pt-1">
@@ -207,11 +196,25 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
                 <p className="text-[11px] text-zinc-600 text-center pt-8">No nodes match &ldquo;{query}&rdquo;</p>
               )
             ) : (
-              categories.map((cat) => (
-                <Category key={cat.label} category={cat} onAdd={handleAdd} />
-              ))
+              <Accordion type="single" collapsible defaultValue={categories[0]?.label}>
+                {categories.map((cat) => (
+                  <AccordionItem key={cat.label} value={cat.label} className="border-none">
+                    <AccordionTrigger className="px-1 py-2 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest hover:text-zinc-400 hover:no-underline rounded-none [&_svg]:text-zinc-600">
+                      {cat.label}
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-0">
+                      <div className="flex flex-col gap-1.5 pb-4">
+                        {cat.nodes.map((node) => (
+                          <NodeCard key={node.type} node={node} onAdd={handleAdd} />
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             )}
           </div>
+          </ScrollArea>
         </div>
       </aside>
     </>
