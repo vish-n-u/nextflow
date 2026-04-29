@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Plus, RefreshCw, Search, Grid2X2, ChevronDown } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
-import type { NodePreview, EdgePreview } from "@/lib/api/workflows";
+import type { NodePreview, EdgePreview } from "@/lib/api/workflows/list-workflows";
 import { NODE_EDGE_COLORS, DEFAULT_EDGE_COLOR } from "@/lib/nodeColors";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
