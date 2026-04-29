@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, RefreshCw, Search, Grid2X2, ChevronDown } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
+import Image from "next/image";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,15 +23,26 @@ function WorkflowCard({ id, name, updatedAt }: {
   id: string; name: string; updatedAt: string;
 }) {
   return (
-    <Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
-      {/* Thumbnail */}
-      <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors" />
-      {/* Info */}
-      <div>
-        <p className="text-[13px] text-white font-book truncate">{name}</p>
-        <p className="text-[11px] text-[#666] font-book mt-0.5">{formatTime(updatedAt)}</p>
-      </div>
-    </Link>
+    
+<Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
+  {/* Thumbnail */}
+  <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors relative">
+    <Image
+      src="https://community.n8n.io/uploads/default/original/3X/4/6/4661c2d0d17bf907d1968359d1d6e53fbe79a1a8.png"
+      alt="Workflow thumbnail"
+      fill
+      className="object-cover"
+    />
+  </div>
+
+  {/* Info */}
+  <div>
+    <p className="text-[13px] text-white font-book truncate">{name}</p>
+    <p className="text-[11px] text-[#666] font-book mt-0.5">
+      {formatTime(updatedAt)}
+    </p>
+  </div>
+</Link>
   );
 }
 
