@@ -79,6 +79,7 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
   const activeRunIdRef = useRef<string | null>(null);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveAsAppStatus,  setSaveAsAppStatus]  = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [hasNodeStarted,   setHasNodeStarted]   = useState(false);
   const invalidateRuns      = useRunsStore((s) => s.invalidate);
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
   const [runError,         setRunError]         = useState<string | null>(null);
@@ -342,11 +343,12 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
     }
 
     setRunError(null);
+    setHasNodeStarted(false);
     setWorkflowStatus("running");
     try {
       const result = await runWorkflowFnRef.current(subgraph);
       activeRunIdRef.current = result.runId;
-      setTimeout(() => setWorkflowRun({ runId: result.runId, publicToken: result.publicToken }), 5000);
+      setWorkflowRun({ runId: result.runId, publicToken: result.publicToken });
 
       const scope = isPartial ? "partial" : "full";
       const dbRes = await fetch("/api/runs", {
@@ -401,6 +403,12 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
     void auth.withAuth({ accessToken: publicToken }, async () => {
       for await (const run of runs.subscribeToRun(runId)) {
         if (!mounted) break;
+
+        // Hide the "starting" toast the moment any node status appears
+        const earlyStatuses = run.metadata?.nodeStatuses as Record<string, string> | undefined;
+        if (earlyStatuses && Object.keys(earlyStatuses).length > 0) {
+          setHasNodeStarted(true);
+        }
 
         const isTerminal = run.isCompleted || run.isFailed;
         if (!isTerminal) continue;
@@ -475,7 +483,7 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Starting toast */}
-        {workflowStatus === "running" && !workflowRun && (
+        {workflowStatus === "running" && !hasNodeStarted && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-full bg-zinc-900 border border-yellow-500/30 shadow-2xl shadow-yellow-500/10 pointer-events-none">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
