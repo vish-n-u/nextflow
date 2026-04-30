@@ -232,8 +232,7 @@ export function WorkflowsHome() {
 
           {/* Description */}
           <p className="text-[13.5px] text-[#b0b0b0] leading-[1.6] mb-8 font-book">
-            Nodes is the most powerful way to operate NextFlow. Connect<br />
-            every tool and model into complex automated pipelines.
+            Nodes is the most powerful way to operate NextFlow. Connect every tool and model into complex automated pipelines.
           </p>
 
           {/* CTA button */}

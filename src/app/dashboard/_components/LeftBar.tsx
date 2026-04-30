@@ -96,7 +96,7 @@ export function LeftBar({ onNodeAdd, isOpen = true, onClose }: LeftBarProps) {
           md:static md:top-auto md:bottom-auto md:z-auto md:shrink-0
           md:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          ${collapsed ? "md:w-12 w-64" : "md:w-56 w-64"}
+          ${collapsed ? "md:w-12 w-[min(16rem,85vw)]" : "md:w-56 w-[min(16rem,85vw)]"}
         `}
       >
         {/* ── Collapsed strip (desktop only) ── */}

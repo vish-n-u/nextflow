@@ -63,6 +63,13 @@ body {
 .glow-success { box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.45); }
 .glow-error   { box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.45); }
 
+/* ── MiniMap: hide on mobile ────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .react-flow__minimap {
+    display: none !important;
+  }
+}
+
 /* ── GlowEdge: transparent hit path must never show dashes ─────────────── */
 .react-flow__edge-glowEdge .react-flow__edge-path {
   animation: none !important;
