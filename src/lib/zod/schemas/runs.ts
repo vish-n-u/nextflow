@@ -35,7 +35,7 @@ const nodeResultSchema = z.object({
 });
 
 export const completeRunSchema = z.object({
-  status:      z.enum(["success", "failed", "partial"]).describe("Overall run status"),
+  status:      z.enum(["success", "failed", "partial", "cancelled"]).describe("Overall run status"),
   completedAt: z.string().datetime().describe("ISO datetime string of completion"),
   nodeResults: z
     .record(z.string(), nodeResultSchema)

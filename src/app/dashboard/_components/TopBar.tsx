@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 interface TopBarProps {
   workflowName: string;
   onWorkflowNameChange: (name: string) => void;
-  workflowStatus: "idle" | "running" | "success" | "error";
+  workflowStatus: "idle" | "running" | "success" | "error" | "cancelled";
   onRunWorkflow: () => void;
   saveStatus: "idle" | "saving" | "saved" | "error";
   onSave: () => void;
@@ -25,14 +25,16 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
     selectedCount > 0 ? `Run (${selectedCount})` : "Run";
 
   const btnLabel =
-    workflowStatus === "running" ? "Running…" :
-    workflowStatus === "success" ? "Done"      :
-    workflowStatus === "error"   ? "Error"     : idleLabel;
+    workflowStatus === "running"   ? "Running…"  :
+    workflowStatus === "success"   ? "Done"       :
+    workflowStatus === "error"     ? "Error"      :
+    workflowStatus === "cancelled" ? "Cancelled"  : idleLabel;
 
   const btnCls =
-    workflowStatus === "success" ? "bg-green-500 text-white hover:bg-green-400" :
-    workflowStatus === "error"   ? "bg-red-500 text-white hover:bg-red-400"     :
-    workflowStatus === "running" ? "bg-zinc-300 text-black"                     :
+    workflowStatus === "success"   ? "bg-green-500 text-white hover:bg-green-400"   :
+    workflowStatus === "error"     ? "bg-red-500 text-white hover:bg-red-400"       :
+    workflowStatus === "cancelled" ? "bg-zinc-600 text-zinc-300"                    :
+    workflowStatus === "running"   ? "bg-zinc-300 text-black"                       :
     "bg-white text-black hover:bg-zinc-200";
 
   return (
@@ -92,7 +94,7 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
         {/* Run button */}
         <Button
           onClick={onRunWorkflow}
-          disabled={workflowStatus === "running"}
+          disabled={workflowStatus === "running" || workflowStatus === "cancelled"}
           size="sm"
           className={`rounded-full text-xs font-semibold cursor-pointer ${btnCls}`}
         >

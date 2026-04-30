@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { Node, Edge } from "@xyflow/react";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { TopBar }           from "./TopBar";
@@ -12,6 +13,8 @@ import { useRunsStore }       from "@/lib/stores/runsStore";
 import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
 export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkflowId?: string; fromAppId?: string } = {}) {
+  const router = useRouter();
+  const pendingNavRef = useRef<string | null>(null);
   const [workflowName, setWorkflowName] = useState("");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
@@ -68,7 +71,8 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
     [],
   );
 
-  const [workflowStatus,   setWorkflowStatus]   = useState<"idle" | "running" | "success" | "error">("idle");
+  const [workflowStatus,   setWorkflowStatus]   = useState<"idle" | "running" | "success" | "error" | "cancelled">("idle");
+  const workflowStatusRef = useRef<"idle" | "running" | "success" | "error" | "cancelled">("idle");
   const [workflowRun,      setWorkflowRun]      = useState<{ runId: string; publicToken: string } | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Tracks the active Trigger.dev runId as soon as the run starts (before workflowRun is set)
@@ -81,6 +85,9 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
   const savedWorkflowIdRef  = useRef<string | null>(null);
   const publishedAppIdRef   = useRef<string | null>(null);
   const dbRunIdRef = useRef<string | null>(null);
+
+  // Keep workflowStatusRef in sync so stable callbacks always read the live value
+  useEffect(() => { workflowStatusRef.current = workflowStatus; }, [workflowStatus]);
 
   const setActiveWorkflowId = (id: string | null) => {
     savedWorkflowIdRef.current = id;
@@ -247,32 +254,53 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleSave]);
 
+  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+    if (workflowStatusRef.current !== "running") return;
+    e.preventDefault();
+    pendingNavRef.current = "/dashboard";
+    setShowCancelConfirm(true);
+  }, []);
+
   const cancelActiveRun = useCallback(async () => {
     const runId = activeRunIdRef.current;
-    if (!runId) return;
     activeRunIdRef.current = null;
     setWorkflowRun(null);
-    setWorkflowStatus("idle");
-    await fetch("/api/runs/cancel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ triggerRunId: runId }),
-    });
-  }, []);
+    setWorkflowStatus("cancelled");
+    if (runId) {
+      await fetch("/api/runs/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ triggerRunId: runId }),
+      });
+    }
+    if (dbRunIdRef.current) {
+      await fetch(`/api/runs/${dbRunIdRef.current}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled", completedAt: new Date().toISOString(), nodeResults: {} }),
+      });
+      dbRunIdRef.current = null;
+      invalidateRuns();
+    }
+    const dest = pendingNavRef.current;
+    pendingNavRef.current = null;
+    if (dest) router.push(dest);
+  }, [router, invalidateRuns]);
 
   // Warn on hard leave (refresh / close / back / forward) and cancel via sendBeacon
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!activeRunIdRef.current) return;
+      if (workflowStatusRef.current !== "running") return;
       e.preventDefault();
+      e.returnValue = "";
     };
 
     const handlePageHide = (e: PageTransitionEvent) => {
       // persisted=true means the page is being bfcached (not actually leaving)
-      if (e.persisted || !activeRunIdRef.current) return;
+      if (e.persisted || workflowStatusRef.current !== "running") return;
       navigator.sendBeacon(
         "/api/runs/cancel",
-        new Blob([JSON.stringify({ triggerRunId: activeRunIdRef.current })], {
+        new Blob([JSON.stringify({ triggerRunId: activeRunIdRef.current, dbRunId: dbRunIdRef.current ?? undefined })], {
           type: "application/json",
         }),
       );
@@ -357,9 +385,9 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
     }
   }, [workflowStatus, workflowName, selectedCount, canvasMode]);
 
-  // Reset button back to idle after success/error
+  // Reset button back to idle after success/error/cancelled
   useEffect(() => {
-    if (workflowStatus !== "success" && workflowStatus !== "error") return;
+    if (workflowStatus !== "success" && workflowStatus !== "error" && workflowStatus !== "cancelled") return;
     const t = setTimeout(() => setWorkflowStatus("idle"), 6000);
     return () => clearTimeout(t);
   }, [workflowStatus]);
@@ -443,7 +471,7 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
         runError={runError}
         selectedCount={canvasMode === "select" ? selectedCount : 0}
-        onLogoClick={(e) => { if (activeRunIdRef.current) { e.preventDefault(); setShowCancelConfirm(true); } }}
+        onLogoClick={handleLogoClick}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Starting toast */}
@@ -474,6 +502,7 @@ export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkfl
           onRunSelected={handleRunWorkflow}
           workflowRun={workflowRun}
           isWorkflowRunning={workflowStatus === "running"}
+          onDashboardClick={handleLogoClick}
           showPublicButton={!fromAppId && !publishedAppIdRef.current}
           saveAsAppStatus={saveAsAppStatus}
           onSaveAsApp={handleSaveAsApp}

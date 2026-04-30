@@ -210,9 +210,10 @@ interface FlowCanvasInnerProps {
   showPublicButton: boolean;
   saveAsAppStatus: "idle" | "saving" | "saved" | "error";
   onSaveAsApp: () => void;
+  onDashboardClick: (e: React.MouseEvent) => void;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onCanvasModeChange, onRunSelected, workflowRun, isWorkflowRunning, showPublicButton, saveAsAppStatus, onSaveAsApp }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onCanvasModeChange, onRunSelected, workflowRun, isWorkflowRunning, showPublicButton, saveAsAppStatus, onSaveAsApp, onDashboardClick }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>("pan");
@@ -530,6 +531,7 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
         <Panel position="top-left" style={{ marginTop: "0.75rem", marginLeft: "0.75rem" }}>
           <Link
             href="/dashboard"
+            onClick={onDashboardClick}
             className="flex items-center gap-1.5 bg-[#1a1a1a]/95 backdrop-blur-sm border border-white/[0.08] text-[#888] hover:text-white hover:bg-white/[0.06] text-[12px] font-book px-3 py-1.5 rounded-xl shadow-2xl transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -593,6 +595,7 @@ interface FlowCanvasProps {
   showPublicButton: boolean;
   saveAsAppStatus: "idle" | "saving" | "saved" | "error";
   onSaveAsApp: () => void;
+  onDashboardClick: (e: React.MouseEvent) => void;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {

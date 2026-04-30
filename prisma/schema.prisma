@@ -114,6 +114,7 @@ enum RunStatus {
   success
   failed
   partial
+  cancelled
 }
 
 enum RunScope {
