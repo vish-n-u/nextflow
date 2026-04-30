@@ -20,6 +20,7 @@ model User {
 
   workflows Workflow[]
   runs      Run[]
+  apps      App[]
 }
 
 ///////////////////////////
@@ -35,10 +36,29 @@ model Workflow {
   nodes     Json
   edges     Json
 
+  isPublic  Boolean  @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   runs      Run[]
+}
+
+///////////////////////////
+// APP (public, all users)
+///////////////////////////
+model App {
+  id        String   @id @default(cuid())
+  name      String
+  creatorId String
+  creator   User     @relation(fields: [creatorId], references: [id])
+
+  // React Flow JSON — same shape as Workflow
+  nodes     Json
+  edges     Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 ///////////////////////////

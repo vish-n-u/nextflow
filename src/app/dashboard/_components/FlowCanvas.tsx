@@ -25,7 +25,7 @@ import {
 } from "@xyflow/react";
 
 import Link from "next/link";
-import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, ArrowLeft, type LucideIcon } from "lucide-react";
+import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, ArrowLeft, Globe, Check, Loader2, type LucideIcon } from "lucide-react";
 import { getEdgeColor } from "@/lib/nodeColors";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
@@ -207,9 +207,12 @@ interface FlowCanvasInnerProps {
   onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
+  showPublicButton: boolean;
+  saveAsAppStatus: "idle" | "saving" | "saved" | "error";
+  onSaveAsApp: () => void;
 }
 
-function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onCanvasModeChange, onRunSelected, workflowRun, isWorkflowRunning }: FlowCanvasInnerProps) {
+function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWorkflow, onRegisterGetSnapshot, onRegisterGetSelectedNodes, onRegisterLoadWorkflow, onSelectedCountChange, onCanvasModeChange, onRunSelected, workflowRun, isWorkflowRunning, showPublicButton, saveAsAppStatus, onSaveAsApp }: FlowCanvasInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>("pan");
@@ -533,6 +536,29 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
             Dashboard
           </Link>
         </Panel>
+        {showPublicButton && (
+          <Panel position="top-right" style={{ marginTop: "0.75rem", marginRight: "0.75rem" }}>
+            <button
+              onClick={onSaveAsApp}
+              disabled={saveAsAppStatus === "saving"}
+              className={`flex items-center gap-1.5 text-[12px] font-book px-3 py-1.5 rounded-xl shadow-2xl border transition-colors disabled:opacity-50 backdrop-blur-sm ${
+                saveAsAppStatus === "saved"
+                  ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
+                  : saveAsAppStatus === "error"
+                  ? "bg-red-500/20 border-red-500/30 text-red-300"
+                  : "bg-[#1a1a1a]/95 border-white/[0.08] text-[#888] hover:text-white hover:bg-white/[0.06]"
+              }`}
+            >
+              {saveAsAppStatus === "saving" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {saveAsAppStatus === "saved"  && <Check   className="w-3.5 h-3.5" />}
+              {(saveAsAppStatus === "idle" || saveAsAppStatus === "error") && <Globe className="w-3.5 h-3.5" />}
+              {saveAsAppStatus === "saving" ? "Publishing…"
+                : saveAsAppStatus === "saved" ? "Published"
+                : saveAsAppStatus === "error" ? "Failed"
+                : "Make Workplace Public"}
+            </button>
+          </Panel>
+        )}
         <BottomToolbar mode={canvasMode} onModeChange={handleCanvasModeChange} />
         <MiniMap
           position="bottom-right"
@@ -564,6 +590,9 @@ interface FlowCanvasProps {
   onRunSelected: () => void;
   workflowRun: { runId: string; publicToken: string } | null;
   isWorkflowRunning: boolean;
+  showPublicButton: boolean;
+  saveAsAppStatus: "idle" | "saving" | "saved" | "error";
+  onSaveAsApp: () => void;
 }
 
 export function FlowCanvas(props: FlowCanvasProps) {

@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { AppApiError } from "@/lib/errors";
 
 export interface WorkflowDetail {
-  id:    string;
-  name:  string;
-  nodes: unknown; // React Flow node array (JSON stored as-is)
-  edges: unknown; // React Flow edge array (JSON stored as-is)
+  id:       string;
+  name:     string;
+  nodes:    unknown; // React Flow node array (JSON stored as-is)
+  edges:    unknown; // React Flow edge array (JSON stored as-is)
+  isPublic: boolean;
 }
 
 /**
@@ -16,7 +17,7 @@ export interface WorkflowDetail {
 export async function getWorkflow(workflowId: string, userId: string): Promise<WorkflowDetail> {
   const workflow = await prisma.workflow.findUnique({
     where:  { id: workflowId },
-    select: { id: true, name: true, nodes: true, edges: true, userId: true },
+    select: { id: true, name: true, nodes: true, edges: true, userId: true, isPublic: true },
   });
 
   if (!workflow) {
@@ -28,9 +29,10 @@ export async function getWorkflow(workflowId: string, userId: string): Promise<W
   }
 
   return {
-    id:    workflow.id,
-    name:  workflow.name,
-    nodes: workflow.nodes,
-    edges: workflow.edges,
+    id:       workflow.id,
+    name:     workflow.name,
+    nodes:    workflow.nodes,
+    edges:    workflow.edges,
+    isPublic: workflow.isPublic,
   };
 }

@@ -11,7 +11,7 @@ import { getNodeMeta }        from "@/lib/nodeRegistry";
 import { useRunsStore }       from "@/lib/stores/runsStore";
 import { useWorkflowsStore }  from "@/lib/stores/workflowsStore";
 
-export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: string } = {}) {
+export function DashboardShell({ initialWorkflowId, fromAppId }: { initialWorkflowId?: string; fromAppId?: string } = {}) {
   const [workflowName, setWorkflowName] = useState("");
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
@@ -60,7 +60,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
       if (pendingWorkflowRef.current) {
         const w = pendingWorkflowRef.current;
         pendingWorkflowRef.current = null;
-        setActiveWorkflowId(w.id);
+        if (w.id) setActiveWorkflowId(w.id);
         setWorkflowName(w.name);
         fn(w.nodes, w.edges);
       }
@@ -74,10 +74,12 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
   // Tracks the active Trigger.dev runId as soon as the run starts (before workflowRun is set)
   const activeRunIdRef = useRef<string | null>(null);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveAsAppStatus,  setSaveAsAppStatus]  = useState<"idle" | "saving" | "saved" | "error">("idle");
   const invalidateRuns      = useRunsStore((s) => s.invalidate);
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
   const [runError,         setRunError]         = useState<string | null>(null);
-  const savedWorkflowIdRef = useRef<string | null>(null);
+  const savedWorkflowIdRef  = useRef<string | null>(null);
+  const publishedAppIdRef   = useRef<string | null>(null);
   const dbRunIdRef = useRef<string | null>(null);
 
   const setActiveWorkflowId = (id: string | null) => {
@@ -89,13 +91,14 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     if (!initialWorkflowId) return;
     fetch(`/api/workflows/${initialWorkflowId}`)
       .then((r) => r.json())
-      .then((w: { id: string; name: string; nodes: Node[]; edges: Edge[] }) => {
+      .then((w: { id: string; name: string; nodes: Node[]; edges: Edge[]; isPublic: boolean }) => {
         setWorkflowName(w.name);
+        // If already published, mark the ref so the button stays hidden
+        if (w.isPublic) publishedAppIdRef.current = w.id;
         if (loadWorkflowFnRef.current) {
           setActiveWorkflowId(w.id);
           loadWorkflowFnRef.current(w.nodes, w.edges);
         } else {
-          // Canvas not mounted yet — stash and load when it registers
           pendingWorkflowRef.current = w;
           setActiveWorkflowId(w.id);
         }
@@ -103,6 +106,90 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
       .catch(() => { /* ignore — canvas stays blank */ });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWorkflowId]);
+
+  // Fork from app — pre-fill canvas with app's nodes/edges but treat as a new unsaved workflow
+  useEffect(() => {
+    if (!fromAppId) return;
+    fetch(`/api/apps/${fromAppId}`)
+      .then((r) => r.json())
+      .then((a: { name: string; nodes: Node[]; edges: Edge[] }) => {
+        setWorkflowName(a.name);
+        if (loadWorkflowFnRef.current) {
+          loadWorkflowFnRef.current(a.nodes, a.edges);
+        } else {
+          // Canvas not mounted yet — stash without an id so it stays unsaved
+          pendingWorkflowRef.current = { id: "", name: a.name, nodes: a.nodes, edges: a.edges };
+        }
+      })
+      .catch(() => { /* ignore — canvas stays blank */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromAppId]);
+
+  const handleSaveAsApp = useCallback(async () => {
+    if (!getSnapshotFnRef.current || saveAsAppStatus === "saving") return;
+    setSaveAsAppStatus("saving");
+    const { nodes, edges } = getSnapshotFnRef.current();
+
+    const cleanNodes = nodes.map((n) => {
+      const {
+        status, output, errorMessage,
+        runId, publicToken, dbRunId,
+        fileBase64, previewUrl,
+        ...configData
+      } = n.data as Record<string, unknown>;
+      void status; void output; void errorMessage;
+      void runId; void publicToken; void dbRunId;
+      void fileBase64; void previewUrl;
+      return { id: n.id, type: n.type ?? "", data: configData, position: n.position };
+    });
+    const cleanEdges = edges.map((e) => ({
+      id:           e.id,
+      source:       e.source,
+      target:       e.target,
+      sourceHandle: e.sourceHandle ?? null,
+      targetHandle: e.targetHandle ?? "",
+    }));
+
+    try {
+      // Step 1 — ensure the workflow is saved and get its id
+      const saveRes = await fetch("/api/workflows", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflowId: savedWorkflowIdRef.current ?? undefined,
+          name:       workflowName || "Untitled",
+          nodes:      cleanNodes,
+          edges:      cleanEdges,
+        }),
+      });
+      if (!saveRes.ok) throw new Error("Failed to save workflow");
+      const { id: workflowId } = await saveRes.json() as { id: string };
+      setActiveWorkflowId(workflowId);
+      invalidateWorkflows();
+
+      // Step 2 — save immutable snapshot to App table
+      const appRes = await fetch("/api/apps", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: workflowName || "Untitled", nodes: cleanNodes, edges: cleanEdges }),
+      });
+      if (!appRes.ok) throw new Error("Failed to publish app");
+      const { id: appId } = await appRes.json() as { id: string };
+      publishedAppIdRef.current = appId;
+
+      // Step 3 — flip isPublic on the workflow row
+      await fetch(`/api/workflows/${workflowId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      setSaveAsAppStatus("saved");
+      setTimeout(() => setSaveAsAppStatus("idle"), 2000);
+    } catch {
+      setSaveAsAppStatus("error");
+      setTimeout(() => setSaveAsAppStatus("idle"), 3000);
+    }
+  }, [saveAsAppStatus, workflowName, invalidateWorkflows]);
 
   const handleSave = useCallback(async () => {
     if (!getSnapshotFnRef.current || saveStatus === "saving") return;
@@ -387,6 +474,9 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
           onRunSelected={handleRunWorkflow}
           workflowRun={workflowRun}
           isWorkflowRunning={workflowStatus === "running"}
+          showPublicButton={!fromAppId && !publishedAppIdRef.current}
+          saveAsAppStatus={saveAsAppStatus}
+          onSaveAsApp={handleSaveAsApp}
         />
         <RightBar
           selectedNode={selectedNode}

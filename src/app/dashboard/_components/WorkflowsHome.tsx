@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, RefreshCw, Search, Grid2X2, ChevronDown } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { useWorkflowsStore } from "@/lib/stores/workflowsStore";
+import { useAppsStore }      from "@/lib/stores/appsStore";
 import type { NodePreview, EdgePreview } from "@/lib/api/workflows/list-workflows";
 import { NODE_EDGE_COLORS, DEFAULT_EDGE_COLOR } from "@/lib/nodeColors";
 
@@ -115,17 +116,34 @@ function WorkflowCard({ id, name, updatedAt, previewNodes, previewEdges }: {
 }) {
   return (
     <Link href={`/dashboard/${id}`} className="group flex flex-col gap-2">
-      {/* Thumbnail */}
       <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden group-hover:border-white/15 transition-colors">
         <WorkflowPreviewSvg nodes={previewNodes} edges={previewEdges} />
       </div>
-
-      {/* Info */}
       <div>
         <p className="text-[13px] text-white font-book truncate">{name}</p>
-        <p className="text-[11px] text-[#666] font-book mt-0.5">
-          {formatTime(updatedAt)}
-        </p>
+        <p className="text-[11px] text-[#666] font-book mt-0.5">{formatTime(updatedAt)}</p>
+      </div>
+    </Link>
+  );
+}
+
+// ── AppCard ───────────────────────────────────────────────────────────────────
+
+function AppCard({ id, name, updatedAt, previewNodes, previewEdges }: {
+  id: string; name: string; updatedAt: string;
+  previewNodes: NodePreview[]; previewEdges: EdgePreview[];
+}) {
+  return (
+    <Link href={`/dashboard/new?from=${id}`} className="group flex flex-col gap-2">
+      <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/5 overflow-hidden relative group-hover:border-white/15 transition-colors">
+        <WorkflowPreviewSvg nodes={previewNodes} edges={previewEdges} />
+        <div className="absolute top-2 left-2 flex items-center gap-1 bg-purple-500/20 border border-purple-500/30 rounded-full px-2 py-0.5">
+          <span className="text-[10px] text-purple-300 font-book">Public</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-[13px] text-white font-book truncate">{name}</p>
+        <p className="text-[11px] text-[#666] font-book mt-0.5">{formatTime(updatedAt)}</p>
       </div>
     </Link>
   );
@@ -133,25 +151,44 @@ function WorkflowCard({ id, name, updatedAt, previewNodes, previewEdges }: {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-const TABS = ["Projects", "Apps", "Examples", "Templates"] as const;
+const TABS = ["Workplaces", "Public Workplaces", "Examples", "Templates"] as const;
 type Tab = typeof TABS[number];
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export function WorkflowsHome() {
   const {
-    workflows, hasMore, loading, loadingMore, error,
-    fetch: loadWorkflows, fetchMore,
+    workflows, hasMore: workflowsHasMore, loading: workflowsLoading,
+    loadingMore: workflowsLoadingMore, error: workflowsError,
+    fetch: loadWorkflows, fetchMore: fetchMoreWorkflows,
   } = useWorkflowsStore();
 
+  const {
+    apps, hasMore: appsHasMore, loading: appsLoading,
+    loadingMore: appsLoadingMore, error: appsError,
+    fetch: loadApps, fetchMore: fetchMoreApps,
+  } = useAppsStore();
+
   const [search, setSearch]   = useState("");
-  const [activeTab, setTab]   = useState<Tab>("Projects");
+  const [activeTab, setTab]   = useState<Tab>("Workplaces");
 
   useEffect(() => { void loadWorkflows(); }, [loadWorkflows]);
+  useEffect(() => {
+    if (activeTab === "Public Workplaces") void loadApps();
+  }, [activeTab, loadApps]);
 
+  const isAppsTab = activeTab === "Public Workplaces";
+
+  const loading     = isAppsTab ? appsLoading     : workflowsLoading;
+  const loadingMore = isAppsTab ? appsLoadingMore  : workflowsLoadingMore;
+  const error       = isAppsTab ? appsError        : workflowsError;
+  const hasMore     = isAppsTab ? appsHasMore      : workflowsHasMore;
+  const fetchMore   = isAppsTab ? fetchMoreApps    : fetchMoreWorkflows;
+
+  const items = isAppsTab ? apps : workflows;
   const filtered = search.trim()
-    ? workflows.filter((w) => w.name.toLowerCase().includes(search.toLowerCase()))
-    : workflows;
+    ? items.filter((w) => w.name.toLowerCase().includes(search.toLowerCase()))
+    : items;
 
   return (
     <div className="min-h-screen bg-[#111111] text-white flex flex-col font-book">
@@ -270,18 +307,20 @@ export function WorkflowsHome() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
 
-          {/* New Workflow card */}
-          <Link href="/dashboard/new" className="group flex flex-col gap-2">
-            <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/[0.06] group-hover:border-white/15 flex items-center justify-center transition-colors">
-              <div className="w-9 h-9 rounded-full bg-[#2a2a2a] group-hover:bg-[#333] flex items-center justify-center transition-colors">
-                <Plus className="w-4 h-4 text-white" />
+          {/* New Workflow card — only on Projects tab */}
+          {!isAppsTab && (
+            <Link href="/dashboard/new" className="group flex flex-col gap-2">
+              <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c] border border-white/[0.06] group-hover:border-white/15 flex items-center justify-center transition-colors">
+                <div className="w-9 h-9 rounded-full bg-[#2a2a2a] group-hover:bg-[#333] flex items-center justify-center transition-colors">
+                  <Plus className="w-4 h-4 text-white" />
+                </div>
               </div>
-            </div>
-            <p className="text-[13px] text-white font-book">New Workflow</p>
-          </Link>
+              <p className="text-[13px] text-white font-book">New Workflow</p>
+            </Link>
+          )}
 
           {/* Skeleton loaders */}
-          {loading && workflows.length === 0 && Array.from({ length: 4 }).map((_, i) => (
+          {loading && items.length === 0 && Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-2 animate-pulse">
               <div className="aspect-[4/3] rounded-xl bg-[#1c1c1c]" />
               <div className="h-3 w-2/3 rounded bg-[#222]" />
@@ -289,26 +328,43 @@ export function WorkflowsHome() {
             </div>
           ))}
 
-          {/* Workflow cards */}
-          {filtered.map((wf) => (
-            <WorkflowCard
-              key={wf.id}
-              id={wf.id}
-              name={wf.name}
-              updatedAt={wf.updatedAt}
-              previewNodes={wf.previewNodes}
-              previewEdges={wf.previewEdges}
-            />
-          ))}
+          {/* Cards */}
+          {filtered.map((item) =>
+            isAppsTab ? (
+              <AppCard
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                updatedAt={item.updatedAt}
+                previewNodes={item.previewNodes}
+                previewEdges={item.previewEdges}
+              />
+            ) : (
+              <WorkflowCard
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                updatedAt={item.updatedAt}
+                previewNodes={item.previewNodes}
+                previewEdges={item.previewEdges}
+              />
+            )
+          )}
         </div>
 
         {/* Empty state */}
-        {!loading && !error && workflows.length === 0 && (
+        {!loading && !error && items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <p className="text-[13px] text-[#555] font-book">No workflows yet.</p>
-            <Link href="/dashboard/new" className="text-[12px] text-white/40 hover:text-white/70 underline underline-offset-2 font-book transition-colors">
-              Create your first workflow
-            </Link>
+            {isAppsTab ? (
+              <p className="text-[13px] text-[#555] font-book">No public workplaces yet.</p>
+            ) : (
+              <>
+                <p className="text-[13px] text-[#555] font-book">No workflows yet.</p>
+                <Link href="/dashboard/new" className="text-[12px] text-white/40 hover:text-white/70 underline underline-offset-2 font-book transition-colors">
+                  Create your first workflow
+                </Link>
+              </>
+            )}
           </div>
         )}
 
