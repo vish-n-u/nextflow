@@ -124,14 +124,12 @@ export function GlowEdge({
         fill="none"
       />
 
-      {/* ── Traveling pulse ──────────────────────────────────────────────────
-          key={pulseKey} causes React to remount this <g> every time glow
-          turns on, restarting all SMIL animations from scratch.
-          strokeOpacity={0} / fillOpacity={0} are the resting values so that
-          fill="remove" on each <animate> restores them to invisible after
-          the animation completes.
+      {/* ── Traveling pulse (loops while glow is true) ───────────────────────
+          key={pulseKey} remounts the <g> each time glow turns on so the
+          animation restarts cleanly from the source node.
+          repeatCount="indefinite" keeps it looping until glow turns off.
       ──────────────────────────────────────────────────────────────────── */}
-      {pulseKey > 0 && (
+      {glow && (
         <g key={pulseKey}>
           {/* Wide outer halo of the pulse */}
           <path
@@ -144,9 +142,8 @@ export function GlowEdge({
             strokeDasharray="0.2 0.8"
             pathLength="1"
           >
-            {/* dashoffset 1→-1 moves the dash from before the source to past the target */}
-            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.75s" fill="remove" />
-            <animate attributeName="stroke-opacity" values="0;0.2;0.2;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="remove" />
+            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animate attributeName="stroke-opacity" values="0;0.2;0.2;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
           </path>
 
           {/* Bright colored core of the pulse */}
@@ -160,8 +157,8 @@ export function GlowEdge({
             strokeDasharray="0.15 0.85"
             pathLength="1"
           >
-            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.75s" fill="remove" />
-            <animate attributeName="stroke-opacity" values="0;0.95;0.95;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="remove" />
+            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animate attributeName="stroke-opacity" values="0;0.95;0.95;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
           </path>
 
           {/* White specular highlight on the pulse */}
@@ -175,30 +172,30 @@ export function GlowEdge({
             strokeDasharray="0.08 0.92"
             pathLength="1"
           >
-            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.75s" fill="remove" />
-            <animate attributeName="stroke-opacity" values="0;0.8;0.8;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="remove" />
+            <animate attributeName="stroke-dashoffset" from="1" to="-1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animate attributeName="stroke-opacity" values="0;0.8;0.8;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
           </path>
 
           {/* Moving dot — outer glow halo */}
           <circle r={6} fill={color} fillOpacity={0}>
-            <animate attributeName="fill-opacity" values="0;0.3;0.3;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="freeze" />
-            <animateMotion dur="0.75s" fill="freeze" rotate="auto">
+            <animate attributeName="fill-opacity" values="0;0.3;0.3;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animateMotion dur="0.9s" repeatCount="indefinite" fill="remove" rotate="auto">
               <mpath href={`#${id}`} />
             </animateMotion>
           </circle>
 
           {/* Moving dot — colored core */}
           <circle r={3.5} fill={color} fillOpacity={0}>
-            <animate attributeName="fill-opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="freeze" />
-            <animateMotion dur="0.75s" fill="freeze" rotate="auto">
+            <animate attributeName="fill-opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animateMotion dur="0.9s" repeatCount="indefinite" fill="remove" rotate="auto">
               <mpath href={`#${id}`} />
             </animateMotion>
           </circle>
 
           {/* Moving dot — white specular center */}
           <circle r={1.5} fill="white" fillOpacity={0}>
-            <animate attributeName="fill-opacity" values="0;0.9;0.9;0" keyTimes="0;0.1;0.85;1" dur="0.75s" fill="freeze" />
-            <animateMotion dur="0.75s" fill="freeze" rotate="auto">
+            <animate attributeName="fill-opacity" values="0;0.9;0.9;0" keyTimes="0;0.1;0.85;1" dur="0.9s" repeatCount="indefinite" fill="remove" />
+            <animateMotion dur="0.9s" repeatCount="indefinite" fill="remove" rotate="auto">
               <mpath href={`#${id}`} />
             </animateMotion>
           </circle>

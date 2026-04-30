@@ -188,7 +188,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     setWorkflowStatus("running");
     try {
       const result = await runWorkflowFnRef.current(subgraph);
-      setWorkflowRun({ runId: result.runId, publicToken: result.publicToken });
+      setTimeout(() => setWorkflowRun({ runId: result.runId, publicToken: result.publicToken }), 5000);
 
       const scope = isPartial ? "partial" : "full";
       const dbRes = await fetch("/api/runs", {
