@@ -38,6 +38,10 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
       : "border-white/[0.07]";
 
   const handleFile = (file: File) => {
+    if (file.size > 1 * 1024 * 1024) {
+      updateNodeData(id, { status: NodeStatus.Error, errorMessage: "File exceeds the 1 MB size limit." });
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -140,7 +144,7 @@ export function UploadImageNode({ id, data, selected }: NodeProps<UploadImageNod
               className="nodrag w-full flex flex-col items-center gap-2.5 py-7 border border-dashed border-white/[0.1] hover:border-white/20 rounded-xl text-[#555] hover:text-[#888] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               <Upload className="w-4 h-4" />
               <span className="text-[12px] font-book">Upload</span>
-              <span className="text-[11px] text-[#444] font-book">Select asset</span>
+              <span className="text-[11px] text-[#444] font-book">Max 1 MB</span>
             </button>
           )}
 
