@@ -165,7 +165,7 @@ export function WorkflowsHome() {
       </header>
 
       {/* ── Hero banner ──────────────────────────────────────────────────── */}
-      <div className="relative w-full overflow-hidden min-h-[320px] sm:min-h-[400px]">
+      <div className="relative w-full overflow-hidden min-h-[320px] sm:min-h-[400px] flex items-center">
         {/* BG image — covers right half */}
         <div
           className="absolute inset-0 bg-cover bg-right"
@@ -175,7 +175,7 @@ export function WorkflowsHome() {
         <div className="absolute inset-0 bg-gradient-to-r from-[#111111] from-30% via-[#111111]/80 via-55% to-transparent" />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center h-full px-6 sm:px-12 md:px-16 max-w-[520px]">
+        <div className="relative z-10 flex flex-col px-6 sm:px-12 md:px-16 max-w-[520px] py-12">
           {/* Icon + title */}
           <div className="flex items-center gap-3 mb-4">
             <div
