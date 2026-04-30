@@ -24,7 +24,8 @@ import {
   SelectionMode,
 } from "@xyflow/react";
 
-import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { MousePointer2, Hand, ZoomIn, ZoomOut, Maximize2, Play, Keyboard, ArrowLeft, type LucideIcon } from "lucide-react";
 import { getEdgeColor } from "@/lib/nodeColors";
 import { runs, auth } from "@trigger.dev/sdk/v3";
 import { COMPONENT_REGISTRY } from "./nodes/componentRegistry";
@@ -523,6 +524,15 @@ function FlowCanvasInner({ nodeToAdd, onNodeAdded, onNodeSelect, onRegisterRunWo
           color="#27272a"
           style={{ backgroundColor: "#0a0a0a" }}
         />
+        <Panel position="top-right" style={{ marginTop: "0.75rem", marginRight: "0.75rem" }}>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 bg-[#1a1a1a]/95 backdrop-blur-sm border border-white/[0.08] text-[#888] hover:text-white hover:bg-white/[0.06] text-[12px] font-book px-3 py-1.5 rounded-xl shadow-2xl transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Dashboard
+          </Link>
+        </Panel>
         <BottomToolbar mode={canvasMode} onModeChange={handleCanvasModeChange} />
         <MiniMap
           position="bottom-right"
