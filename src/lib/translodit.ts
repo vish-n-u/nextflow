@@ -1,7 +1,7 @@
 import {Transloadit} from "transloadit";
 
 export function getTransloadit() {
-  if (!process.env.TRANSLOADIT_AUTH_KEY) {
+  if (!process.env.TRANSLOADIT_AUTH_KEY)   {
     throw new Error("Missing TRANSLOADIT_AUTH_KEY");
   }
 
