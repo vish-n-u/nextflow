@@ -36,7 +36,7 @@ const nodeResultSchema = z.object({
 
 export const completeRunSchema = z.object({
   status:      z.enum(["success", "failed", "partial"]).describe("Overall run status"),
-  completedAt: z.string().describe("ISO datetime string of completion"),
+  completedAt: z.string().datetime().describe("ISO datetime string of completion"),
   nodeResults: z
     .record(z.string(), nodeResultSchema)
     .describe("Per-node results keyed by React Flow node ID"),

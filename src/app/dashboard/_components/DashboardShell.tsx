@@ -70,6 +70,9 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
 
   const [workflowStatus,   setWorkflowStatus]   = useState<"idle" | "running" | "success" | "error">("idle");
   const [workflowRun,      setWorkflowRun]      = useState<{ runId: string; publicToken: string } | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Tracks the active Trigger.dev runId as soon as the run starts (before workflowRun is set)
+  const activeRunIdRef = useRef<string | null>(null);
   const [saveStatus,       setSaveStatus]       = useState<"idle" | "saving" | "saved" | "error">("idle");
   const invalidateRuns      = useRunsStore((s) => s.invalidate);
   const invalidateWorkflows = useWorkflowsStore((s) => s.invalidate);
@@ -157,6 +160,45 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleSave]);
 
+  const cancelActiveRun = useCallback(async () => {
+    const runId = activeRunIdRef.current;
+    if (!runId) return;
+    activeRunIdRef.current = null;
+    setWorkflowRun(null);
+    setWorkflowStatus("idle");
+    await fetch("/api/runs/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ triggerRunId: runId }),
+    });
+  }, []);
+
+  // Warn on hard leave (refresh / close / back / forward) and cancel via sendBeacon
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!activeRunIdRef.current) return;
+      e.preventDefault();
+    };
+
+    const handlePageHide = (e: PageTransitionEvent) => {
+      // persisted=true means the page is being bfcached (not actually leaving)
+      if (e.persisted || !activeRunIdRef.current) return;
+      navigator.sendBeacon(
+        "/api/runs/cancel",
+        new Blob([JSON.stringify({ triggerRunId: activeRunIdRef.current })], {
+          type: "application/json",
+        }),
+      );
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, []);
+
   const handleRunWorkflow = useCallback(async () => {
     if (!runWorkflowFnRef.current || workflowStatus === "running") return;
 
@@ -188,6 +230,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
     setWorkflowStatus("running");
     try {
       const result = await runWorkflowFnRef.current(subgraph);
+      activeRunIdRef.current = result.runId;
       setTimeout(() => setWorkflowRun({ runId: result.runId, publicToken: result.publicToken }), 5000);
 
       const scope = isPartial ? "partial" : "full";
@@ -275,6 +318,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
 
         if (run.isCompleted) setWorkflowStatus("success");
         if (run.isFailed)    setWorkflowStatus("error");
+        activeRunIdRef.current = null;
         setWorkflowRun(null);
 
         if (dbRunIdRef.current) {
@@ -312,6 +356,7 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
         onToggleRightBar={() => setRightBarOpen((v) => !v)}
         runError={runError}
         selectedCount={canvasMode === "select" ? selectedCount : 0}
+        onLogoClick={(e) => { if (activeRunIdRef.current) { e.preventDefault(); setShowCancelConfirm(true); } }}
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Starting toast */}
@@ -351,6 +396,34 @@ export function DashboardShell({ initialWorkflowId }: { initialWorkflowId?: stri
       </div>
     </div>
 
+      {/* Cancel-on-leave confirmation dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-700 shadow-2xl p-6 flex flex-col gap-4">
+            <h2 className="text-base font-semibold text-white">Cancel running workflow?</h2>
+            <p className="text-sm text-zinc-400">
+              Leaving now will cancel the active run. Any work in progress will be lost.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="px-4 py-2 rounded-lg text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                Stay
+              </button>
+              <button
+                onClick={async () => {
+                  setShowCancelConfirm(false);
+                  await cancelActiveRun();
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+              >
+                Cancel run &amp; leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -9,8 +9,8 @@ import { createRun, getRuns, transformRun } from "@/lib/api/runs";
 // Each run includes its node-level results for the history sidebar.
 export const GET = withAuth(async ({ req, headers, session }) => {
   const { searchParams } = new URL(req.url);
-  const limit  = Math.min(parseInt(searchParams.get("limit")  ?? "5",  10), 50);
-  const offset = Math.max(parseInt(searchParams.get("offset") ?? "0",  10), 0);
+  const limit  = Math.min(Math.max(parseInt(searchParams.get("limit")  ?? "5",  10) || 5,  1), 50);
+  const offset = Math.max(parseInt(searchParams.get("offset") ?? "0",  10) || 0, 0);
   const runs = await getRuns(session.userId, limit, offset);
   return NextResponse.json(runs.map(transformRun), { headers });
 });

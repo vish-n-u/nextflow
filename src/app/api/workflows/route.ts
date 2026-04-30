@@ -8,8 +8,8 @@ import { saveWorkflow, listWorkflows } from "@/lib/api/workflows";
 // Does not include full nodes/edges JSON — use GET /api/workflows/[id] for that.
 export const GET = withAuth(async ({ req, headers, session }) => {
   const { searchParams } = new URL(req.url);
-  const limit  = Math.min(parseInt(searchParams.get("limit")  ?? "5",  10), 50);
-  const offset = Math.max(parseInt(searchParams.get("offset") ?? "0",  10), 0);
+  const limit  = Math.min(Math.max(parseInt(searchParams.get("limit")  ?? "5",  10) || 5,  1), 50);
+  const offset = Math.max(parseInt(searchParams.get("offset") ?? "0",  10) || 0, 0);
   const workflows = await listWorkflows(session.userId, limit, offset);
   return NextResponse.json(workflows, { headers });
 });

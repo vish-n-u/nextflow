@@ -17,9 +17,10 @@ interface TopBarProps {
   onToggleRightBar: () => void;
   runError?: string | null;
   selectedCount?: number;
+  onLogoClick?: (e: React.MouseEvent) => void;
 }
 
-export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onToggleLeftBar, onToggleRightBar, runError, selectedCount = 0 }: TopBarProps) {
+export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onRunWorkflow, saveStatus, onSave, onToggleLeftBar, onToggleRightBar, runError, selectedCount = 0, onLogoClick }: TopBarProps) {
   const idleLabel =
     selectedCount > 0 ? `Run (${selectedCount})` : "Run";
 
@@ -48,7 +49,7 @@ export function TopBar({ workflowName, onWorkflowNameChange, workflowStatus, onR
         >
           <PanelLeft className="w-4 h-4" />
         </Button>
-        <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+        <Link href="/dashboard" onClick={onLogoClick} className="flex items-center gap-2 cursor-pointer">
           <Layers className="w-4 h-4 text-white hidden md:block" />
           <span className="text-sm font-semibold text-white tracking-tight hidden sm:block">NextFlow</span>
         </Link>
